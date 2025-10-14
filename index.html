@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,38 +32,43 @@
             margin: 0;
             padding: 0;
             transition: background-color 0.3s, color 0.3s;
-            overflow-y: auto; /* Allow scrolling if needed */
+            overflow-y: auto;
         }
 
         .container {
-            max-width: 100%; /* Full width for mobile */
-            margin: 10px auto;
-            padding: 10px;
+            max-width: 100%;
+            margin: 5px auto;
+            padding: 5px;
             background-color: var(--bg-color);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             border-radius: 4px;
         }
 
         header {
             text-align: center;
-            font-size: 1.2em;
-            margin-bottom: 10px;
+            font-size: 1em;
+            margin-bottom: 5px;
         }
 
         .form-group {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 5px;
-            margin-bottom: 10px;
+            gap: 2px;
+            margin-bottom: 5px;
+        }
+
+        label {
+            font-size: 0.7em;
+            margin-bottom: 1px;
         }
 
         input, select, button {
-            padding: 8px;
+            padding: 4px;
             border: 1px solid #ddd;
             border-radius: 4px;
             background-color: var(--input-bg);
             color: var(--text-color);
-            font-size: 0.9em;
+            font-size: 0.8em;
         }
 
         button {
@@ -70,6 +76,8 @@
             color: var(--button-text);
             cursor: pointer;
             transition: background-color 0.3s;
+            padding: 4px;
+            font-size: 0.8em;
         }
 
         button:hover {
@@ -78,40 +86,40 @@
 
         video {
             width: 100%;
-            height: 200px; /* Smaller height for better fit */
+            height: 150px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         #preview-img {
             width: 100%;
             height: auto;
-            max-height: 200px;
+            max-height: 150px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             display: none;
         }
 
         #logs {
-            margin-top: 10px;
-            padding: 8px;
+            margin-top: 5px;
+            padding: 5px;
             border: 1px solid #ddd;
             border-radius: 4px;
             background-color: var(--input-bg);
-            max-height: 200px;
+            max-height: 150px;
             overflow-y: auto;
+            font-size: 0.7em;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.8em;
         }
 
         th, td {
-            padding: 6px;
+            padding: 4px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
@@ -122,34 +130,43 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background: var(--bg-color);
-            padding: 15px;
+            padding: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             border-radius: 8px;
             display: none;
             z-index: 1000;
-            max-width: 90vw;
-            max-height: 90vh;
+            max-width: 95vw;
+            max-height: 95vh;
             overflow: auto;
         }
 
         #popup img {
             max-width: 100%;
-            max-height: 70vh;
+            max-height: 60vh;
         }
 
         #close-popup {
-            margin-top: 10px;
+            margin-top: 5px;
             width: 100%;
         }
 
         #auth-status {
-            margin-bottom: 5px;
+            margin-bottom: 2px;
             font-style: italic;
-            font-size: 0.8em;
+            font-size: 0.7em;
         }
 
         #log-btn {
-            display: none; /* Shown after scan */
+            display: none;
+        }
+
+        #clear-logs {
+            margin-top: 5px;
+            width: 100%;
+        }
+
+        #camera-select {
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -157,9 +174,9 @@
     <div class="container">
         <header>Receipt Expense Logger</header>
         <div class="form-group">
-            <label for="cloud-provider">Cloud Storage:</label>
+            <label for="cloud-provider">Cloud:</label>
             <select id="cloud-provider">
-                <option value="none">None (Local Only)</option>
+                <option value="none">None</option>
                 <option value="google">Google Drive</option>
                 <option value="onedrive">OneDrive</option>
             </select>
@@ -173,7 +190,7 @@
         <div class="form-group">
             <label for="category">Category:</label>
             <select id="category">
-                <option>Select Category</option>
+                <option>Select</option>
                 <option>Food</option>
                 <option>Travel</option>
                 <option>Supplies</option>
@@ -182,35 +199,40 @@
         </div>
         <div class="form-group">
             <label for="amount">Amount:</label>
-            <input type="number" step="0.01" id="amount" placeholder="e.g., 25.50">
+            <input type="number" step="0.01" id="amount" placeholder="25.50">
         </div>
         <div class="form-group">
-            <label for="desc">Description:</label>
-            <input type="text" id="desc" placeholder="e.g., Lunch meeting">
+            <label for="desc">Desc:</label>
+            <input type="text" id="desc" placeholder="Lunch">
         </div>
+        <select id="camera-select"></select>
         <video id="video" autoplay></video>
-        <img id="preview-img" alt="Captured Preview">
+        <img id="preview-img" alt="Preview">
         <canvas id="canvas" style="display:none;"></canvas>
-        <button id="capture">Capture and Scan Receipt</button>
-        <button id="log-btn">Log Expense</button>
+        <button id="capture">Capture & Scan</button>
+        <button id="native-capture">Use Native Camera</button>
+        <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none;">
+        <button id="log-btn">Log</button>
         <button id="view-logs">View Logs</button>
         <div id="logs" style="display:none;">
             <table id="log-table">
                 <thead>
                     <tr>
                         <th>Date</th>
-                        <th>Category</th>
-                        <th>Amount</th>
+                        <th>Cat</th>
+                        <th>Amt</th>
                         <th>Desc</th>
                         <th>Photo</th>
                         <th>Cloud</th>
+                        <th>Del</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
             </table>
             <p id="total-amount"></p>
+            <button id="clear-logs">Clear All</button>
         </div>
-        <button id="toggle-theme">Toggle Theme</button>
+        <button id="toggle-theme">Theme</button>
     </div>
 
     <div id="popup">
@@ -218,18 +240,14 @@
         <button id="close-popup">Close</button>
     </div>
 
-    <!-- Google API Scripts -->
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-
-    <!-- MSAL Script -->
     <script src="https://alcdn.msauth.net/browser/2.0.0/js/msal-browser.min.js"></script>
 
     <script>
-        // Google API Setup - NOTE: Replace with your actual IDs/keys from Google Cloud Console (enable Drive API, create OAuth Client ID for Web)
-        const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // e.g., '1234567890-abcde.apps.googleusercontent.com'
-        const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY'; // e.g., 'AIzaSy...'
-
+        // Google API Setup
+        const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+        const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY';
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
@@ -251,28 +269,35 @@
                 gapiInited = true;
                 updateAuthStatus();
             } catch (err) {
-                alert('Google API init error: ' + err.message + '. Check your API_KEY and CLIENT_ID.');
+                console.error('GAPI init error:', err);
+                alert('Google API init failed. Check console for details. Ensure CLIENT_ID and API_KEY are correct, and origins are authorized in Google Console.');
             }
         }
 
         function gisLoaded() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID,
-                scope: GOOGLE_SCOPES,
-                callback: '',
-            });
-            gisInited = true;
-            updateAuthStatus();
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: GOOGLE_CLIENT_ID,
+                    scope: GOOGLE_SCOPES,
+                    callback: '',
+                });
+                gisInited = true;
+                updateAuthStatus();
+            } catch (err) {
+                console.error('GIS init error:', err);
+                alert('Google Identity Services init failed. Check CLIENT_ID.');
+            }
         }
 
         function handleGoogleAuth() {
-            if (!gisInited || !gapiInited) {
-                alert('Google APIs not fully loaded. Try refreshing.');
+            if (!gisInited || !gapiInited || !tokenClient) {
+                alert('Google APIs not loaded. Refresh and try again.');
                 return;
             }
             tokenClient.callback = (resp) => {
-                if (resp.error) {
-                    alert('Google Auth Error: ' + resp.error + '. Ensure CLIENT_ID is correct and app is published/verified if needed.');
+                if (resp.error !== undefined) {
+                    console.error('Google auth error:', resp);
+                    alert('Google Auth Error: ' + (resp.error || 'Unknown') + '. Check console. Common issues: Mismatched origins, unpublished app, or invalid CLIENT_ID.');
                     return;
                 }
                 googleAccessToken = resp.access_token;
@@ -296,18 +321,23 @@
             form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
             form.append('file', blob);
 
-            const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-                method: 'POST',
-                headers: new Headers({ 'Authorization': 'Bearer ' + googleAccessToken }),
-                body: form,
-            });
-            const val = await res.json();
-            if (val.error) throw new Error(val.error.message);
-            return val.id;
+            try {
+                const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+                    method: 'POST',
+                    headers: new Headers({ 'Authorization': 'Bearer ' + googleAccessToken }),
+                    body: form,
+                });
+                const val = await res.json();
+                if (val.error) throw new Error(val.error.message);
+                return val.id;
+            } catch (err) {
+                alert('Google Upload error: ' + err.message);
+                throw err;
+            }
         }
 
-        // MSAL Setup - NOTE: Replace with your Azure App Registration Client ID (add Microsoft Graph Files.ReadWrite permission)
-        const MSAL_CLIENT_ID = 'YOUR_MSAL_CLIENT_ID'; // e.g., '12345678-1234-1234-1234-1234567890ab'
+        // MSAL Setup
+        const MSAL_CLIENT_ID = 'YOUR_MSAL_CLIENT_ID';
         const MSAL_AUTHORITY = 'https://login.microsoftonline.com/common';
         const MSAL_REDIRECT_URI = window.location.origin;
         const MSAL_SCOPES = ['Files.ReadWrite'];
@@ -331,7 +361,8 @@
                 microsoftAccessToken = response.accessToken;
                 updateAuthStatus();
             } catch (err) {
-                alert('Microsoft Auth Error: ' + err.message + '. Check your CLIENT_ID.');
+                console.error('MSAL error:', err);
+                alert('Microsoft Auth Error: ' + err.message);
             }
         }
 
@@ -343,7 +374,7 @@
                 });
                 microsoftAccessToken = response.accessToken;
             } catch (err) {
-                console.log('Silent token failed, popup');
+                console.log('Silent failed');
                 const response = await msalInstance.acquireTokenPopup({scopes: MSAL_SCOPES});
                 microsoftAccessToken = response.accessToken;
             }
@@ -386,19 +417,36 @@
         const popup = document.getElementById('popup');
         const popupImg = document.getElementById('popup-img');
         const closePopup = document.getElementById('close-popup');
+        const clearLogsBtn = document.getElementById('clear-logs');
+        const cameraSelect = document.getElementById('camera-select');
+        const nativeCaptureBtn = document.getElementById('native-capture');
+        const fileInput = document.getElementById('file-input');
 
         let stream;
         let logs = JSON.parse(localStorage.getItem('expenses_logs')) || [];
         let capturedBlob = null;
+        let cameras = [];
 
-        async function startCamera() {
-            if (!window.isSecureContext) {
-                alert('Camera requires secure context (HTTPS/localhost).');
-                return;
-            }
+        async function loadCameras() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                cameras = devices.filter(device => device.kind === 'videoinput');
+                cameraSelect.innerHTML = cameras.map((device, idx) => `<option value="${device.deviceId}">${device.label || 'Camera ' + (idx + 1)}</option>`).join('');
+                if (cameras.length > 0) {
+                    startCamera(cameras[0].deviceId);
+                }
+            } catch (err) {
+                console.error('Enumerate devices error:', err);
+            }
+        }
+
+        async function startCamera(deviceId) {
+            stopCamera();
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({video: {deviceId: {exact: deviceId || cameras[0]?.deviceId}}});
                 video.srcObject = stream;
+                video.style.display = 'block';
+                previewImg.style.display = 'none';
             } catch (err) {
                 console.error('Camera error:', err);
                 alert('Camera access error: ' + err.message);
@@ -408,6 +456,47 @@
         function stopCamera() {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+        }
+
+        cameraSelect.addEventListener('change', (e) => startCamera(e.target.value));
+
+        nativeCaptureBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                capturedBlob = e.target.files[0];
+                previewImg.src = URL.createObjectURL(capturedBlob);
+                previewImg.style.display = 'block';
+                video.style.display = 'none';
+                logBtn.style.display = 'block';
+                // Optionally trigger OCR here
+                processOCR(capturedBlob);
+            }
+        });
+
+        async function processOCR(blob) {
+            try {
+                const worker = await Tesseract.createWorker('eng');
+                const { data: { text } } = await worker.recognize(blob);
+                await worker.terminate();
+
+                const amountMatch = text.match(/(\d+\.\d{2})/);
+                const dateMatch = text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+                const descLines = text.split('\n').filter(line => line.trim() && !line.match(/total|date/i));
+
+                if (amountMatch) amountInput.value = parseFloat(amountMatch[0]);
+                if (dateMatch) {
+                    let [m, d, y] = dateMatch[0].split('/');
+                    dateInput.value = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                }
+                descInput.value = descLines.join(' ').substring(0, 50);
+                categorySelect.value = 'Other';
+
+                alert('Scan done! Edit & log.');
+            } catch (err) {
+                alert('OCR error: ' + err.message);
             }
         }
 
@@ -419,19 +508,19 @@
                 authStatus.textContent = '';
             } else if (provider === 'google') {
                 if (googleAccessToken) {
-                    authStatus.textContent = 'Signed in to Google Drive';
+                    authStatus.textContent = 'Signed in';
                     signInBtn.textContent = 'Sign Out';
                 } else {
                     authStatus.textContent = 'Not signed in';
-                    signInBtn.textContent = 'Sign In to Google';
+                    signInBtn.textContent = 'Sign In';
                 }
             } else if (provider === 'onedrive') {
                 if (microsoftAccessToken) {
-                    authStatus.textContent = 'Signed in to OneDrive';
+                    authStatus.textContent = 'Signed in';
                     signInBtn.textContent = 'Sign Out';
                 } else {
                     authStatus.textContent = 'Not signed in';
-                    signInBtn.textContent = 'Sign In to OneDrive';
+                    signInBtn.textContent = 'Sign In';
                 }
             }
         }
@@ -461,59 +550,39 @@
         });
 
         captureBtn.addEventListener('click', async () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
             canvas.getContext('2d').drawImage(video, 0, 0);
 
             canvas.toBlob(async (blob) => {
                 capturedBlob = blob;
                 previewImg.src = URL.createObjectURL(blob);
                 previewImg.style.display = 'block';
-                video.style.display = 'none'; // Hide video after capture
+                video.style.display = 'none';
 
-                // Run OCR
-                try {
-                    const worker = await Tesseract.createWorker('eng');
-                    const { data: { text } } = await worker.recognize(blob);
-                    await worker.terminate();
-
-                    // Parse text for info
-                    const amountMatch = text.match(/(\d+\.\d{2})/); // Simple amount regex
-                    const dateMatch = text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/); // MM/DD/YYYY
-                    const descLines = text.split('\n').filter(line => line.trim() && !line.match(/total|date/i)); // Rough desc
-
-                    if (amountMatch) amountInput.value = parseFloat(amountMatch[0]);
-                    if (dateMatch) dateInput.value = dateMatch[0].split('/').reverse().join('-'); // To YYYY-MM-DD
-                    descInput.value = descLines.join(' ').substring(0, 100); // Truncate
-                    categorySelect.value = 'Other'; // Default, or parse if possible
-
-                    alert('Scan complete! Edit fields if needed, then log.');
-                    logBtn.style.display = 'block';
-                } catch (err) {
-                    alert('OCR error: ' + err.message + '. Proceed manually.');
-                    logBtn.style.display = 'block';
-                }
+                processOCR(blob);
+                logBtn.style.display = 'block';
             }, 'image/jpeg');
         });
 
         logBtn.addEventListener('click', async () => {
             const date = dateInput.value || new Date().toISOString().split('T')[0];
-            const category = categorySelect.value !== 'Select Category' ? categorySelect.value : 'Other';
+            const category = categorySelect.value !== 'Select' ? categorySelect.value : 'Other';
             const amount = parseFloat(amountInput.value);
             const desc = descInput.value;
 
             if (!desc || isNaN(amount) || amount <= 0) {
-                alert('Please enter valid amount and description.');
+                alert('Valid amount & desc required.');
                 return;
             }
 
             if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                alert('Invalid date format.');
+                alert('Invalid date.');
                 return;
             }
 
             if (!capturedBlob) {
-                alert('Capture a photo first.');
+                alert('Capture first.');
                 return;
             }
 
@@ -529,11 +598,11 @@
                     } else if (provider === 'onedrive' && microsoftAccessToken) {
                         cloudId = await uploadToOneDrive(capturedBlob, filename);
                     } else {
-                        alert('Please sign in to the selected cloud provider.');
+                        alert('Sign in to cloud.');
                         return;
                     }
                 } catch (err) {
-                    alert('Upload error: ' + err.message);
+                    alert('Upload failed: ' + err.message);
                 }
             }
 
@@ -542,7 +611,7 @@
                 const dataURL = reader.result;
                 logs.push({timestamp, date, category, amount, desc, photoDataURL: dataURL, cloudId, provider});
                 localStorage.setItem('expenses_logs', JSON.stringify(logs));
-                alert('Expense logged!');
+                alert('Logged!');
                 resetForm();
             };
             reader.readAsDataURL(capturedBlob);
@@ -550,13 +619,13 @@
 
         function resetForm() {
             dateInput.value = new Date().toISOString().split('T')[0];
-            categorySelect.value = 'Select Category';
+            categorySelect.value = 'Select';
             amountInput.value = '';
             descInput.value = '';
             previewImg.style.display = 'none';
-            video.style.display = 'block';
             logBtn.style.display = 'none';
             capturedBlob = null;
+            startCamera(cameraSelect.value);
         }
 
         viewLogsBtn.addEventListener('click', () => {
@@ -569,14 +638,31 @@
                     <td>${log.date}</td>
                     <td>${log.category}</td>
                     <td>${log.amount.toFixed(2)}</td>
-                    <td>${log.desc.substring(0, 20)}...</td>
-                    <td><button onclick="showPhoto(${index})">View</button></td>
-                    <td>${log.cloudId ? `<a href="${log.provider === 'google' ? 'https://drive.google.com/file/d/' + log.cloudId + '/view' : 'https://onedrive.live.com/?id=' + log.cloudId}" target="_blank">Link</a>` : 'Local'}</td>
+                    <td>${log.desc.substring(0, 10)}...</td>
+                    <td><button onclick="showPhoto(${index})">V</button></td>
+                    <td>${log.cloudId ? 'Link' : 'L'}</td>
+                    <td><button onclick="deleteLog(${index})">X</button></td>
                 `;
                 logTableBody.appendChild(row);
                 total += log.amount;
             });
             totalAmountP.textContent = `Total: ${total.toFixed(2)}`;
+        });
+
+        window.deleteLog = (index) => {
+            if (confirm('Delete?')) {
+                logs.splice(index, 1);
+                localStorage.setItem('expenses_logs', JSON.stringify(logs));
+                viewLogsBtn.click();
+            }
+        };
+
+        clearLogsBtn.addEventListener('click', () => {
+            if (confirm('Clear all?')) {
+                logs = [];
+                localStorage.setItem('expenses_logs', JSON.stringify(logs));
+                viewLogsBtn.click();
+            }
         });
 
         window.showPhoto = (index) => {
@@ -593,9 +679,10 @@
         });
 
         // Init
-        startCamera();
+        loadCameras();
         updateAuthStatus();
         dateInput.value = new Date().toISOString().split('T')[0];
     </script>
 </body>
 </html>
+```
