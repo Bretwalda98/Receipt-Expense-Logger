@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -30,11 +29,10 @@
       darkMode: 'class'
     }
   </script>
-  <!-- OCR & Cloud SDKs -->
-  <script src="https://unpkg.com/tesseract.js@v5.1.1/dist/tesseract.min.js"></script>
-  <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-  <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  $1
+  <!-- Excel export (with images) -->
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <style>
     html, body { height: 100%; }
     .glass { background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); backdrop-filter: blur(6px); }
@@ -61,127 +59,122 @@
       <div class="flex items-center gap-2">
         <button id="toggle-theme" class="text-xs px-3 py-2 rounded-xl bg-brand-700 hover:bg-brand-600 transition shadow-card">Theme</button>
       </div>
-    </header>
+    </header><!-- Cloud auth -->
+<section class="glass shadow-card rounded-brand p-3 sm:p-4 border border-bg-line mb-4">
+  <div class="grid grid-auto gap-3">
+    <div>
+      <label class="text-xs block mb-1">Cloud</label>
+      <select id="cloud-provider" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm focus:outline-none">
+        <option value="none">None</option>
+        <option value="google">Google Drive</option>
+        <option value="onedrive">OneDrive</option>
+      </select>
+    </div>
+    <div>
+      <label class="text-xs block mb-1">Status</label>
+      <div id="auth-status" class="text-xs italic px-2 py-2 rounded-lg bg-bg-card border border-bg-line">Not signed in</div>
+    </div>
+    <div class="flex items-end">
+      <button id="sign-in" class="w-full text-xs px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition shadow-card">Sign In</button>
+    </div>
+  </div>
+</section>
 
-    <!-- Cloud auth -->
-    <section class="glass shadow-card rounded-brand p-3 sm:p-4 border border-bg-line mb-4">
-      <div class="grid grid-auto gap-3">
-        <div>
-          <label class="text-xs block mb-1">Cloud</label>
-          <select id="cloud-provider" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm focus:outline-none">
-            <option value="none">None</option>
-            <option value="google">Google Drive</option>
-            <option value="onedrive">OneDrive</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs block mb-1">Status</label>
-          <div id="auth-status" class="text-xs italic px-2 py-2 rounded-lg bg-bg-card border border-bg-line">Not signed in</div>
-        </div>
-        <div class="flex items-end">
-          <button id="sign-in" class="w-full text-xs px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition shadow-card">Sign In</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Form + camera -->
-    <section class="glass shadow-card rounded-brand p-3 sm:p-4 border border-bg-line mb-4">
-      <div class="grid grid-auto gap-3">
-        <div>
-          <label class="text-xs block mb-1">Date</label>
-          <input id="date" type="date" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
-        </div>
-        <div>
-          <label class="text-xs block mb-1">Category</label>
-          <select id="category" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
-            <option>Select</option>
-            <option>Food</option>
-            <option>Travel</option>
-            <option>Supplies</option>
-            <option>Other</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs block mb-1">Amount (£)</label>
-          <input id="amount" type="number" step="0.01" inputmode="decimal" placeholder="25.50" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
-        </div>
-        <div class="sm:col-span-2">
-          <label class="text-xs block mb-1">Description</label>
-          <input id="desc" type="text" placeholder="Lunch" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
-        </div>
-      </div>
-
-      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs block mb-1">Camera</label>
-          <select id="camera-select" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm"></select>
-          <video id="video" autoplay playsinline class="mt-2 w-full aspect-[4/3] rounded-lg border border-bg-line"></video>
-          <img id="preview-img" alt="Preview" class="mt-2 w-full rounded-lg border border-bg-line hidden" />
-          <canvas id="canvas" class="hidden"></canvas>
-          <div class="flex gap-2 mt-2">
-            <button id="capture" class="flex-1 text-xs px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition shadow-card">Capture & Scan</button>
-            <button id="native-capture" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Use Native</button>
-            <input type="file" id="file-input" accept="image/*" capture="environment" class="hidden">
-          </div>
-          <p id="ocr-status" class="text-xs text-text-muted mt-1"></p>
-        </div>
-        <div>
-          <label class="text-xs block mb-1">Actions</label>
-          <div class="grid grid-cols-2 gap-2">
-            <button id="log-btn" class="text-xs px-3 py-2 rounded-xl bg-good/90 hover:bg-good transition shadow-card hidden">Log</button>
-            <button id="view-logs" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">View Logs</button>
-            <button id="export-csv" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Export CSV</button>
-            <button id="import-json" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Import JSON</button>
-            <input id="import-file" type="file" accept="application/json" class="hidden" />
-          </div>
-          <div id="toast" class="mt-3 text-xs hidden"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Logs -->
-    <section id="logs" class="glass shadow-card rounded-brand p-3 sm:p-4 border border-bg-line hidden">
-      <div class="flex items-center justify-between mb-2">
-        <h2 class="text-sm font-semibold">Saved Logs</h2>
-        <div class="flex gap-2">
-          <select id="month-filter" class="text-xs bg-bg-card border border-bg-line rounded-lg px-2 py-1">
-            <option value="all">All months</option>
-          </select>
-          <button id="clear-logs" class="text-xs px-3 py-1.5 rounded-xl bg-bad/80 hover:bg-bad">Clear All</button>
-        </div>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="text-left text-xs text-text-muted border-b border-bg-line">
-            <tr>
-              <th class="py-2 pr-2">Date</th>
-              <th class="py-2 pr-2">Cat</th>
-              <th class="py-2 pr-2">Amt (£)</th>
-              <th class="py-2 pr-2">Desc</th>
-              <th class="py-2 pr-2">Photo</th>
-              <th class="py-2 pr-2">Cloud</th>
-              <th class="py-2 pr-2">Del</th>
-            </tr>
-          </thead>
-          <tbody id="log-tbody"></tbody>
-        </table>
-      </div>
-      <div class="mt-3 flex items-center justify-between">
-        <p id="total-amount" class="text-sm"></p>
-        <p id="count-info" class="text-xs text-text-muted"></p>
-      </div>
-    </section>
+<!-- Form + camera -->
+<section class="glass shadow-card rounded-brand p-3 sm:p-4 border border-bg-line mb-4">
+  <div class="grid grid-auto gap-3">
+    <div>
+      <label class="text-xs block mb-1">Date</label>
+      <input id="date" type="date" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
+    </div>
+    <div>
+      <label class="text-xs block mb-1">Category</label>
+      <select id="category" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
+        <option>Select</option>
+        <option>Food</option>
+        <option>Travel</option>
+        <option>Supplies</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div>
+      <label class="text-xs block mb-1">Amount (£)</label>
+      <input id="amount" type="number" step="0.01" inputmode="decimal" placeholder="25.50" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
+    </div>
+    <div class="sm:col-span-2">
+      <label class="text-xs block mb-1">Description</label>
+      <input id="desc" type="text" placeholder="Lunch" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
+    </div>
   </div>
 
-  <!-- Image popup -->
-  <div id="popup" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+  <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div>
+      <label class="text-xs block mb-1">Camera</label>
+      <select id="camera-select" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm"></select>
+      <video id="video" autoplay playsinline class="mt-2 w-full aspect-[4/3] rounded-lg border border-bg-line"></video>
+      <img id="preview-img" alt="Preview" class="mt-2 w-full rounded-lg border border-bg-line hidden" />
+      <canvas id="canvas" class="hidden"></canvas>
+      <div class="flex gap-2 mt-2">
+        <button id="capture" class="flex-1 text-xs px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition shadow-card">Capture & Scan</button>
+        <button id="native-capture" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Use Native</button>
+        <input type="file" id="file-input" accept="image/*" capture="environment" class="hidden">
+      </div>
+      <p id="ocr-status" class="text-xs text-text-muted mt-1"></p>
+    </div>
+    <div>
+      <label class="text-xs block mb-1">Actions</label>
+      <div class="grid grid-cols-2 gap-2">
+        <button id="log-btn" class="text-xs px-3 py-2 rounded-xl bg-good/90 hover:bg-good transition shadow-card hidden">Log</button>
+        <button id="view-logs" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">View Logs</button>
+        $1
+        <button id="export-xlsx" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Export Excel (.xlsx)</button>
+        <button id="import-json" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Import JSON</button>
+        <input id="import-file" type="file" accept="application/json" class="hidden" />
+      </div>
+      <div id="toast" class="mt-3 text-xs hidden"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Logs -->
+<section id="logs" class="glass shadow-card rounded-brand p-3 sm:p-4 border border-bg-line hidden">
+  <div class="flex items-center justify-between mb-2">
+    <h2 class="text-sm font-semibold">Saved Logs</h2>
+    <div class="flex gap-2">
+      <select id="month-filter" class="text-xs bg-bg-card border border-bg-line rounded-lg px-2 py-1">
+        <option value="all">All months</option>
+      </select>
+      <button id="clear-logs" class="text-xs px-3 py-1.5 rounded-xl bg-bad/80 hover:bg-bad">Clear All</button>
+    </div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-left text-xs text-text-muted border-b border-bg-line">
+        <tr>
+          <th class="py-2 pr-2">Date</th>
+          <th class="py-2 pr-2">Cat</th>
+          <th class="py-2 pr-2">Amt (£)</th>
+          <th class="py-2 pr-2">Desc</th>
+          <th class="py-2 pr-2">Photo</th>
+          <th class="py-2 pr-2">Cloud</th>
+          <th class="py-2 pr-2">Del</th>
+        </tr>
+      </thead>
+      <tbody id="log-tbody"></tbody>
+    </table>
+  </div>
+  <div class="mt-3 flex items-center justify-between">
+    <p id="total-amount" class="text-sm"></p>
+    <p id="count-info" class="text-xs text-text-muted"></p>
+  </div>
+</section>
+
+  </div>  <!-- Image popup -->  <div id="popup" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-bg-card rounded-2xl p-3 sm:p-4 max-w-[95vw] max-h-[90vh] shadow-card border border-bg-line">
       <img id="popup-img" class="max-w-full max-h-[70vh] rounded-lg border border-bg-line" alt="Receipt" />
       <button id="close-popup" class="mt-3 w-full text-xs px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition">Close</button>
     </div>
-  </div>
-
-  <script>
+  </div>  <script>
     // ===== Brand Defaults =====
     const BRAND = {
       name: 'Ingeniarch Labs',
@@ -281,7 +274,7 @@
     const closePopup = $('close-popup'); const clearLogsBtn = $('clear-logs'); const cameraSelect = $('camera-select');
     const nativeCaptureBtn = $('native-capture'); const fileInput = $('file-input');
     const toast = $('toast'); const ocrStatus = $('ocr-status'); const exportCsv = $('export-csv');
-    const importJsonBtn = $('import-json'); const importFile = $('import-file'); const monthFilter = $('month-filter');
+    const importJsonBtn = $('import-json'); const importFile = $('import-file'); $1 const exportXlsxBtn = $('export-xlsx');
 
     let stream; let capturedBlob = null; let cameras = [];
     let logs = readLogs();
@@ -524,9 +517,78 @@
     closePopup.addEventListener('click', () => popup.classList.add('hidden'));
     popup.addEventListener('click', (e) => { if (e.target === popup) popup.classList.add('hidden'); });
 
-    // ===== Export / Import =====
-    exportCsv.addEventListener('click', () => {
+    $1
+
+    // Excel export with embedded images
+    exportXlsxBtn.addEventListener('click', async () => {
       if (!logs.length) { notify('No data to export.', 'warn'); return; }
+      try {
+        const wb = new ExcelJS.Workbook();
+        wb.created = new Date(); wb.modified = new Date();
+        wb.creator = BRAND.name; wb.title = 'Receipt Logs';
+        const ws = wb.addWorksheet('Receipts', { properties: { defaultRowHeight: 20 } });
+
+        // Columns
+        const headers = [
+          { header: 'Date', key: 'date', width: 12 },
+          { header: 'Category', key: 'category', width: 12 },
+          { header: 'Amount (£)', key: 'amount', width: 12 },
+          { header: 'Description', key: 'desc', width: 40 },
+          { header: 'Photo', key: 'photo', width: 18 },
+          { header: 'Provider', key: 'provider', width: 10 },
+          { header: 'Cloud URL', key: 'cloudUrl', width: 45 }
+        ];
+        ws.columns = headers;
+
+        // Header styling
+        ws.getRow(1).font = { bold: true };
+        ws.getRow(1).alignment = { vertical: 'middle' };
+        ws.getRow(1).border = { bottom: { style: 'thin' } };
+
+        // Helper to get extension from dataURL
+        const extFromDataURL = (dataURL) => {
+          const m = /^data:(image\/(png|jpeg|jpg));base64,/.exec(dataURL || '');
+          const subtype = m ? m[2].toLowerCase() : 'jpeg';
+          return subtype === 'jpg' ? 'jpeg' : subtype; // exceljs expects 'jpeg' or 'png'
+        };
+
+        // Add rows + images
+        for (let i = 0; i < logs.length; i++) {
+          const l = logs[i];
+          const rowIndex = i + 2; // 1-based, row 1 is header
+          ws.addRow({ date: l.date, category: l.category, amount: Number(l.amount)||0, desc: l.desc, provider: l.provider || '', cloudUrl: l.cloudUrl || '' });
+          ws.getCell(rowIndex, 3).numFmt = '£#,##0.00';
+          ws.getRow(rowIndex).height = 120; // give space for thumbnail
+
+          if (l.photoDataURL) {
+            const extension = extFromDataURL(l.photoDataURL);
+            const imageId = wb.addImage({ base64: l.photoDataURL, extension });
+            // Place image anchored to column E (index 5), current row
+            ws.addImage(imageId, {
+              tl: { col: 4.1, row: rowIndex - 1 + 0.2 }, // zero-based positions
+              ext: { width: 220, height: 110 }
+            });
+          }
+          // Hyperlink for cloud URL
+          if (l.cloudUrl) {
+            const cell = ws.getCell(rowIndex, 7);
+            cell.value = { text: 'Open', hyperlink: l.cloudUrl };
+            cell.font = { color: { argb: 'FF1D4ED8' }, underline: true };
+          }
+        }
+
+        // Freeze header
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+        const blob = await wb.xlsx.writeBuffer();
+        const file = new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(file, `receipt_logs_${Date.now()}.xlsx`);
+        notify('Excel exported with images.', 'good');
+      } catch (err) {
+        console.error(err);
+        notify('Excel export failed: ' + err.message, 'bad');
+      }
+    }); return; }
       const headers = ['timestamp','date','category','amount','desc','provider','cloudId','cloudUrl'];
       const rows = logs.map(l => headers.map(h => ("" + (l[h] ?? '')).replaceAll('"','""')));
       const csv = [headers.join(','), ...rows.map(r => '"' + r.join('","') + '"')].join('\n');
@@ -553,6 +615,5 @@
     }
 
     init();
-  </script>
-</body>
+  </script></body>
 </html>
