@@ -1,688 +1,558 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt Expense Logger</title>
-    <script src="https://unpkg.com/tesseract.js@v5.1.1/dist/tesseract.min.js"></script>
-    <style>
-        :root {
-            --bg-color: #ffffff;
-            --text-color: #000000;
-            --accent-color: #007bff;
-            --input-bg: #f8f9fa;
-            --button-bg: #007bff;
-            --button-text: #ffffff;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ingeniarch Labs · Receipt Logger</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: { DEFAULT: '#0b1220', card: '#0f172a', line: '#20304b' },
+            text: { DEFAULT: '#e6edf7', muted: '#a9b6cc' },
+            acc: { DEFAULT: '#7dd3fc', fg: '#111827' },
+            good: '#10b981', warn: '#eab308', bad: '#ef4444',
+            brand: {
+              50: '#eef9ff', 100: '#d7f1ff', 200: '#b3e3ff', 300: '#84d2ff',
+              400: '#53bbff', 500: '#26a2ff', 600: '#1587db', 700: '#116cac',
+              800: '#125887', 900: '#134a71', 950: '#0b2d47'
+            }
+          },
+          boxShadow: {
+            card: '0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03)'
+          },
+          borderRadius: { brand: '1.25rem' }
         }
-
-        .dark {
-            --bg-color: #121212;
-            --text-color: #ffffff;
-            --accent-color: #bb86fc;
-            --input-bg: #1e1e1e;
-            --button-bg: #bb86fc;
-            --button-text: #000000;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-            transition: background-color 0.3s, color 0.3s;
-            overflow-y: auto;
-        }
-
-        .container {
-            max-width: 100%;
-            margin: 5px auto;
-            padding: 5px;
-            background-color: var(--bg-color);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-            border-radius: 4px;
-        }
-
-        header {
-            text-align: center;
-            font-size: 1em;
-            margin-bottom: 5px;
-        }
-
-        .form-group {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 2px;
-            margin-bottom: 5px;
-        }
-
-        label {
-            font-size: 0.7em;
-            margin-bottom: 1px;
-        }
-
-        input, select, button {
-            padding: 4px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            font-size: 0.8em;
-        }
-
-        button {
-            background-color: var(--button-bg);
-            color: var(--button-text);
-            cursor: pointer;
-            transition: background-color 0.3s;
-            padding: 4px;
-            font-size: 0.8em;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        video {
-            width: 100%;
-            height: 150px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 5px;
-        }
-
-        #preview-img {
-            width: 100%;
-            height: auto;
-            max-height: 150px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 5px;
-            display: none;
-        }
-
-        #logs {
-            margin-top: 5px;
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: var(--input-bg);
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 0.7em;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 4px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-
-        #popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--bg-color);
-            padding: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            display: none;
-            z-index: 1000;
-            max-width: 95vw;
-            max-height: 95vh;
-            overflow: auto;
-        }
-
-        #popup img {
-            max-width: 100%;
-            max-height: 60vh;
-        }
-
-        #close-popup {
-            margin-top: 5px;
-            width: 100%;
-        }
-
-        #auth-status {
-            margin-bottom: 2px;
-            font-style: italic;
-            font-size: 0.7em;
-        }
-
-        #log-btn {
-            display: none;
-        }
-
-        #clear-logs {
-            margin-top: 5px;
-            width: 100%;
-        }
-
-        #camera-select {
-            margin-bottom: 5px;
-        }
-    </style>
+      },
+      darkMode: 'class'
+    }
+  </script>
+  <!-- OCR & Cloud SDKs -->
+  <script src="https://unpkg.com/tesseract.js@v5.1.1/dist/tesseract.min.js"></script>
+  <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+  <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <style>
+    html, body { height: 100%; }
+    .glass { background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); backdrop-filter: blur(6px); }
+    .grid-auto { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  </style>
 </head>
-<body>
-    <div class="container">
-        <header>Receipt Expense Logger</header>
-        <div class="form-group">
-            <label for="cloud-provider">Cloud:</label>
-            <select id="cloud-provider">
-                <option value="none">None</option>
-                <option value="google">Google Drive</option>
-                <option value="onedrive">OneDrive</option>
-            </select>
-            <div id="auth-status"></div>
-            <button id="sign-in" style="display: none;">Sign In</button>
+<body class="min-h-full bg-bg text-text">
+  <div class="max-w-4xl mx-auto p-3 sm:p-6">
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-2xl bg-brand-600 flex items-center justify-center shadow-card">
+          <!-- simple hex/logo mark -->
+          <svg viewBox="0 0 24 24" class="w-6 h-6 text-white" fill="currentColor" aria-hidden="true">
+            <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 2.3 6.7 3.7v7.98L12 20.7 5.3 15.98V6L12 4.3Z"/>
+            <path d="M7.5 8.5h9v2h-9zM7.5 13.5h5v2h-5z"/>
+          </svg>
         </div>
-        <div class="form-group">
-            <label for="date">Date:</label>
-            <input type="date" id="date">
+        <div>
+          <h1 class="text-lg font-semibold leading-tight">Ingeniarch Labs · Receipt Logger</h1>
+          <p class="text-xs text-text-muted">Fast OCR, tidy records, one‑tap exports.</p>
         </div>
-        <div class="form-group">
-            <label for="category">Category:</label>
-            <select id="category">
-                <option>Select</option>
-                <option>Food</option>
-                <option>Travel</option>
-                <option>Supplies</option>
-                <option>Other</option>
-            </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="toggle-theme" class="text-xs px-3 py-2 rounded-xl bg-brand-700 hover:bg-brand-600 transition shadow-card">Theme</button>
+      </div>
+    </header>
+
+    <!-- Cloud auth -->
+    <section class="glass shadow-card rounded-brand p-3 sm:p-4 border border-bg-line mb-4">
+      <div class="grid grid-auto gap-3">
+        <div>
+          <label class="text-xs block mb-1">Cloud</label>
+          <select id="cloud-provider" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm focus:outline-none">
+            <option value="none">None</option>
+            <option value="google">Google Drive</option>
+            <option value="onedrive">OneDrive</option>
+          </select>
         </div>
-        <div class="form-group">
-            <label for="amount">Amount:</label>
-            <input type="number" step="0.01" id="amount" placeholder="25.50">
+        <div>
+          <label class="text-xs block mb-1">Status</label>
+          <div id="auth-status" class="text-xs italic px-2 py-2 rounded-lg bg-bg-card border border-bg-line">Not signed in</div>
         </div>
-        <div class="form-group">
-            <label for="desc">Desc:</label>
-            <input type="text" id="desc" placeholder="Lunch">
+        <div class="flex items-end">
+          <button id="sign-in" class="w-full text-xs px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition shadow-card">Sign In</button>
         </div>
-        <select id="camera-select"></select>
-        <video id="video" autoplay></video>
-        <img id="preview-img" alt="Preview">
-        <canvas id="canvas" style="display:none;"></canvas>
-        <button id="capture">Capture & Scan</button>
-        <button id="native-capture">Use Native Camera</button>
-        <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none;">
-        <button id="log-btn">Log</button>
-        <button id="view-logs">View Logs</button>
-        <div id="logs" style="display:none;">
-            <table id="log-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Cat</th>
-                        <th>Amt</th>
-                        <th>Desc</th>
-                        <th>Photo</th>
-                        <th>Cloud</th>
-                        <th>Del</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            <p id="total-amount"></p>
-            <button id="clear-logs">Clear All</button>
+      </div>
+    </section>
+
+    <!-- Form + camera -->
+    <section class="glass shadow-card rounded-brand p-3 sm:p-4 border border-bg-line mb-4">
+      <div class="grid grid-auto gap-3">
+        <div>
+          <label class="text-xs block mb-1">Date</label>
+          <input id="date" type="date" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
         </div>
-        <button id="toggle-theme">Theme</button>
+        <div>
+          <label class="text-xs block mb-1">Category</label>
+          <select id="category" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
+            <option>Select</option>
+            <option>Food</option>
+            <option>Travel</option>
+            <option>Supplies</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Amount (£)</label>
+          <input id="amount" type="number" step="0.01" inputmode="decimal" placeholder="25.50" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="text-xs block mb-1">Description</label>
+          <input id="desc" type="text" placeholder="Lunch" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm">
+        </div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs block mb-1">Camera</label>
+          <select id="camera-select" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm"></select>
+          <video id="video" autoplay playsinline class="mt-2 w-full aspect-[4/3] rounded-lg border border-bg-line"></video>
+          <img id="preview-img" alt="Preview" class="mt-2 w-full rounded-lg border border-bg-line hidden" />
+          <canvas id="canvas" class="hidden"></canvas>
+          <div class="flex gap-2 mt-2">
+            <button id="capture" class="flex-1 text-xs px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition shadow-card">Capture & Scan</button>
+            <button id="native-capture" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Use Native</button>
+            <input type="file" id="file-input" accept="image/*" capture="environment" class="hidden">
+          </div>
+          <p id="ocr-status" class="text-xs text-text-muted mt-1"></p>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Actions</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="log-btn" class="text-xs px-3 py-2 rounded-xl bg-good/90 hover:bg-good transition shadow-card hidden">Log</button>
+            <button id="view-logs" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">View Logs</button>
+            <button id="export-csv" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Export CSV</button>
+            <button id="import-json" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Import JSON</button>
+            <input id="import-file" type="file" accept="application/json" class="hidden" />
+          </div>
+          <div id="toast" class="mt-3 text-xs hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Logs -->
+    <section id="logs" class="glass shadow-card rounded-brand p-3 sm:p-4 border border-bg-line hidden">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-sm font-semibold">Saved Logs</h2>
+        <div class="flex gap-2">
+          <select id="month-filter" class="text-xs bg-bg-card border border-bg-line rounded-lg px-2 py-1">
+            <option value="all">All months</option>
+          </select>
+          <button id="clear-logs" class="text-xs px-3 py-1.5 rounded-xl bg-bad/80 hover:bg-bad">Clear All</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-left text-xs text-text-muted border-b border-bg-line">
+            <tr>
+              <th class="py-2 pr-2">Date</th>
+              <th class="py-2 pr-2">Cat</th>
+              <th class="py-2 pr-2">Amt (£)</th>
+              <th class="py-2 pr-2">Desc</th>
+              <th class="py-2 pr-2">Photo</th>
+              <th class="py-2 pr-2">Cloud</th>
+              <th class="py-2 pr-2">Del</th>
+            </tr>
+          </thead>
+          <tbody id="log-tbody"></tbody>
+        </table>
+      </div>
+      <div class="mt-3 flex items-center justify-between">
+        <p id="total-amount" class="text-sm"></p>
+        <p id="count-info" class="text-xs text-text-muted"></p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Image popup -->
+  <div id="popup" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-bg-card rounded-2xl p-3 sm:p-4 max-w-[95vw] max-h-[90vh] shadow-card border border-bg-line">
+      <img id="popup-img" class="max-w-full max-h-[70vh] rounded-lg border border-bg-line" alt="Receipt" />
+      <button id="close-popup" class="mt-3 w-full text-xs px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition">Close</button>
     </div>
+  </div>
 
-    <div id="popup">
-        <img id="popup-img">
-        <button id="close-popup">Close</button>
-    </div>
+  <script>
+    // ===== Brand Defaults =====
+    const BRAND = {
+      name: 'Ingeniarch Labs',
+      storageKey: 'expenses_logs',
+      themeKey: 'il_theme',
+    };
 
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    <script src="https://alcdn.msauth.net/browser/2.0.0/js/msal-browser.min.js"></script>
+    // ===== Google API Setup =====
+    const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+    const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY';
+    const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+    const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
-    <script>
-        // Google API Setup
-        const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
-        const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY';
-        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-        const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+    let tokenClient;
+    let gapiInited = false;
+    let gisInited = false;
+    let googleAccessToken = null;
 
-        let tokenClient;
-        let gapiInited = false;
-        let gisInited = false;
-        let googleAccessToken = null;
+    function gapiLoaded() { if (window.gapi) gapi.load('client', initializeGapiClient); }
+    async function initializeGapiClient() {
+      try {
+        await gapi.client.init({ apiKey: GOOGLE_API_KEY, discoveryDocs: [DISCOVERY_DOC] });
+        gapiInited = true; updateAuthStatus();
+      } catch (err) { notify('Google API init failed – check keys & origin.', 'warn'); console.error(err); }
+    }
+    function gisLoaded() {
+      try {
+        tokenClient = google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES, callback: '' });
+        gisInited = true; updateAuthStatus();
+      } catch (err) { notify('Google Identity init failed – check client id.', 'warn'); console.error(err); }
+    }
+    function handleGoogleAuth() {
+      if (!gisInited || !gapiInited || !tokenClient) { notify('Google APIs not loaded.', 'warn'); return; }
+      tokenClient.callback = (resp) => {
+        if (resp.error) { console.error('Google auth error:', resp); notify('Google auth error.', 'bad'); return; }
+        googleAccessToken = resp.access_token; gapi.client.setToken({ access_token: googleAccessToken }); updateAuthStatus();
+      };
+      if (!gapi.client.getToken()) tokenClient.requestAccessToken({ prompt: 'consent' }); else tokenClient.requestAccessToken({ prompt: '' });
+    }
+    async function uploadToGoogle(blob, filename) {
+      const metadata = { name: filename, mimeType: 'image/jpeg' };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', blob);
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method: 'POST', headers: new Headers({ Authorization: 'Bearer ' + googleAccessToken }), body: form,
+      });
+      const val = await res.json(); if (val.error) throw new Error(val.error.message);
+      // Build a view URL hint for convenience (may require user perms)
+      return { id: val.id, url: `https://drive.google.com/file/d/${val.id}/view` };
+    }
 
-        function gapiLoaded() {
-            gapi.load('client', initializeGapiClient);
+    // ===== OneDrive (MSAL) =====
+    const MSAL_CLIENT_ID = 'YOUR_MSAL_CLIENT_ID';
+    const MSAL_AUTHORITY = 'https://login.microsoftonline.com/common';
+    const MSAL_REDIRECT_URI = window.location.origin;
+    const MSAL_SCOPES = ['Files.ReadWrite'];
+
+    const msalInstance = new msal.PublicClientApplication({ auth: { clientId: MSAL_CLIENT_ID, authority: MSAL_AUTHORITY, redirectUri: MSAL_REDIRECT_URI } });
+    let microsoftAccount = null; let microsoftAccessToken = null;
+
+    async function handleMicrosoftAuth() {
+      try {
+        const response = await msalInstance.loginPopup({ scopes: MSAL_SCOPES });
+        microsoftAccount = response.account; microsoftAccessToken = response.accessToken; updateAuthStatus();
+      } catch (err) { console.error('MSAL error:', err); notify('Microsoft auth error.', 'bad'); }
+    }
+    async function getMicrosoftToken() {
+      if (!microsoftAccount) throw new Error('No Microsoft account');
+      try {
+        const response = await msalInstance.acquireTokenSilent({ scopes: MSAL_SCOPES, account: microsoftAccount });
+        microsoftAccessToken = response.accessToken;
+      } catch (err) {
+        const response = await msalInstance.acquireTokenPopup({ scopes: MSAL_SCOPES });
+        microsoftAccessToken = response.accessToken;
+      }
+    }
+    async function uploadToOneDrive(blob, filename) {
+      await getMicrosoftToken();
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodeURIComponent(filename)}:/content`;
+      const res = await fetch(url, { method: 'PUT', headers: { Authorization: 'Bearer ' + microsoftAccessToken, 'Content-Type': 'image/jpeg' }, body: blob });
+      const val = await res.json(); if (val.error) throw new Error(val.error.message);
+      return { id: val.id, url: val.webUrl || null };
+    }
+
+    // ===== App State =====
+    const $ = (id) => document.getElementById(id);
+    const video = $('video'); const canvas = $('canvas'); const previewImg = $('preview-img');
+    const dateInput = $('date'); const categorySelect = $('category');
+    const amountInput = $('amount'); const descInput = $('desc');
+    const captureBtn = $('capture'); const logBtn = $('log-btn');
+    const viewLogsBtn = $('view-logs'); const logsSection = $('logs');
+    const logTbody = $('log-tbody'); const totalAmountP = $('total-amount');
+    const countInfo = $('count-info'); const toggleThemeBtn = $('toggle-theme');
+    const cloudSelect = $('cloud-provider'); const signInBtn = $('sign-in');
+    const authStatus = $('auth-status'); const popup = $('popup'); const popupImg = $('popup-img');
+    const closePopup = $('close-popup'); const clearLogsBtn = $('clear-logs'); const cameraSelect = $('camera-select');
+    const nativeCaptureBtn = $('native-capture'); const fileInput = $('file-input');
+    const toast = $('toast'); const ocrStatus = $('ocr-status'); const exportCsv = $('export-csv');
+    const importJsonBtn = $('import-json'); const importFile = $('import-file'); const monthFilter = $('month-filter');
+
+    let stream; let capturedBlob = null; let cameras = [];
+    let logs = readLogs();
+
+    function readLogs() {
+      // Migrate any legacy storage key silently
+      const raw = localStorage.getItem(BRAND.storageKey);
+      try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+    }
+    function saveLogs() { localStorage.setItem(BRAND.storageKey, JSON.stringify(logs)); }
+
+    // ===== Utilities =====
+    function notify(msg, level = 'info') {
+      toast.classList.remove('hidden');
+      toast.textContent = msg;
+      const base = 'px-3 py-2 rounded-xl border text-xs';
+      const map = { info: 'bg-brand-700 border-brand-600', warn: 'bg-warn/20 border-warn/40', bad: 'bg-bad/20 border-bad/40', good: 'bg-good/20 border-good/40' };
+      toast.className = base + ' ' + (map[level] || map.info) + ' mt-3';
+      setTimeout(() => { toast.classList.add('hidden'); }, 3200);
+    }
+    function fmtGBP(n) { if (isNaN(n)) return ''; return Number(n).toFixed(2); }
+    function todayISO() { return new Date().toISOString().split('T')[0]; }
+
+    // Month filter setup from logs
+    function refreshMonthFilter() {
+      const months = new Set(logs.map(l => (l.date || '').slice(0,7)).filter(Boolean));
+      const existing = new Set(Array.from(monthFilter.options).map(o => o.value));
+      months.forEach(m => { if (!existing.has(m)) { const opt = document.createElement('option'); opt.value = m; opt.textContent = m; monthFilter.appendChild(opt); } });
+    }
+
+    // ===== Theme =====
+    function applyTheme() {
+      const mode = localStorage.getItem(BRAND.themeKey) || 'dark';
+      document.documentElement.classList.toggle('dark', mode === 'dark');
+      document.body.classList.toggle('bg-white', mode !== 'dark');
+    }
+    toggleThemeBtn.addEventListener('click', () => {
+      const curr = localStorage.getItem(BRAND.themeKey) || 'dark';
+      localStorage.setItem(BRAND.themeKey, curr === 'dark' ? 'light' : 'dark');
+      applyTheme();
+    });
+
+    // ===== Camera =====
+    async function loadCameras() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        cameras = devices.filter(d => d.kind === 'videoinput');
+        cameraSelect.innerHTML = cameras.map((d, i) => `<option value="${d.deviceId}">${d.label || 'Camera ' + (i + 1)}</option>`).join('');
+        if (cameras.length) startCamera(cameras[0].deviceId); else notify('No camera found', 'warn');
+      } catch (err) { console.error(err); notify('Unable to list cameras', 'bad'); }
+    }
+    async function startCamera(deviceId) {
+      stopCamera();
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }, audio: false });
+        video.srcObject = stream; video.classList.remove('hidden'); previewImg.classList.add('hidden');
+      } catch (err) { console.error('Camera error', err); notify('Camera error: ' + err.message, 'bad'); }
+    }
+    function stopCamera() { if (stream) { stream.getTracks().forEach(t => t.stop()); video.srcObject = null; } }
+    cameraSelect.addEventListener('change', (e) => startCamera(e.target.value));
+    nativeCaptureBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleBlob(e.target.files[0]); });
+
+    // ===== OCR =====
+    async function processOCR(blob) {
+      ocrStatus.textContent = 'Scanning…';
+      try {
+        const worker = await Tesseract.createWorker('eng');
+        const { data: { text } } = await worker.recognize(blob);
+        await worker.terminate();
+        ocrStatus.textContent = '';
+        parseReceiptText(text);
+        notify('Scan complete – check fields.', 'good');
+      } catch (err) { ocrStatus.textContent = ''; notify('OCR error: ' + err.message, 'bad'); }
+    }
+
+    function parseReceiptText(text) {
+      // Amount: choose the MAX currency-like number or the one near TOTAL
+      const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      const totalLine = lines.find(l => /total|amount due|grand total/i.test(l)) || '';
+      const moneyRegex = /(?:(?:£|GBP)\s*)?(\d{1,4}(?:[.,]\d{3})*(?:[.,]\d{2}))/g;
+      const candidates = [];
+      lines.forEach((l, idx) => {
+        let m; while ((m = moneyRegex.exec(l)) !== null) {
+          const v = parseFloat(m[1].replace(/,/g, '.'));
+          candidates.push({ v, idx, line: l });
         }
+      });
+      let pick = null;
+      if (totalLine) {
+        const i = lines.indexOf(totalLine);
+        pick = candidates.filter(c => Math.abs(c.idx - i) <= 2).sort((a,b)=>b.v-a.v)[0] || null;
+      }
+      if (!pick && candidates.length) pick = candidates.sort((a,b)=>b.v-a.v)[0];
+      if (pick) amountInput.value = fmtGBP(pick.v);
 
-        async function initializeGapiClient() {
-            try {
-                await gapi.client.init({
-                    apiKey: GOOGLE_API_KEY,
-                    discoveryDocs: [DISCOVERY_DOC],
-                });
-                gapiInited = true;
-                updateAuthStatus();
-            } catch (err) {
-                console.error('GAPI init error:', err);
-                alert('Google API init failed. Check console for details. Ensure CLIENT_ID and API_KEY are correct, and origins are authorized in Google Console.');
-            }
-        }
+      // Date: prefer UK dd/mm/yyyy or dd-mm-yyyy; fallback mm/dd/yyyy
+      const dateUK = text.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\b/);
+      if (dateUK) {
+        let [_, d, m, y] = dateUK; y = y.length === 2 ? ('20' + y) : y;
+        const iso = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        dateInput.value = iso;
+      }
 
-        function gisLoaded() {
-            try {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: GOOGLE_CLIENT_ID,
-                    scope: GOOGLE_SCOPES,
-                    callback: '',
-                });
-                gisInited = true;
-                updateAuthStatus();
-            } catch (err) {
-                console.error('GIS init error:', err);
-                alert('Google Identity Services init failed. Check CLIENT_ID.');
-            }
-        }
+      // Description: concatenate first few non-meta lines
+      const desc = lines.filter(l => !/total|date|vat|thanks|visit|invoice|receipt/i.test(l)).slice(0,3).join(' · ').slice(0, 60);
+      if (desc) descInput.value = desc;
 
-        function handleGoogleAuth() {
-            if (!gisInited || !gapiInited || !tokenClient) {
-                alert('Google APIs not loaded. Refresh and try again.');
-                return;
-            }
-            tokenClient.callback = (resp) => {
-                if (resp.error !== undefined) {
-                    console.error('Google auth error:', resp);
-                    alert('Google Auth Error: ' + (resp.error || 'Unknown') + '. Check console. Common issues: Mismatched origins, unpublished app, or invalid CLIENT_ID.');
-                    return;
-                }
-                googleAccessToken = resp.access_token;
-                updateAuthStatus();
-            };
+      if (categorySelect.value === 'Select') categorySelect.value = 'Other';
+    }
 
-            if (gapi.client.getToken() === null) {
-                tokenClient.requestAccessToken({prompt: 'consent'});
-            } else {
-                tokenClient.requestAccessToken({prompt: ''});
-            }
-        }
+    // ===== Capture helpers =====
+    function handleBlob(blob) {
+      capturedBlob = blob;
+      previewImg.src = URL.createObjectURL(blob);
+      previewImg.classList.remove('hidden');
+      video.classList.add('hidden');
+      logBtn.classList.remove('hidden');
+      processOCR(blob);
+    }
 
-        async function uploadToGoogle(blob, filename) {
-            const metadata = {
-                'name': filename,
-                'mimeType': 'image/jpeg',
-            };
+    captureBtn.addEventListener('click', async () => {
+      const vw = video.videoWidth || 1280; const vh = video.videoHeight || 960;
+      canvas.width = vw; canvas.height = vh;
+      const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, vw, vh);
+      canvas.toBlob((blob) => { if (blob) handleBlob(blob); }, 'image/jpeg');
+    });
 
-            const form = new FormData();
-            form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-            form.append('file', blob);
+    // ===== Auth UI =====
+    function updateAuthStatus() {
+      const provider = cloudSelect.value; signInBtn.classList.remove('hidden');
+      if (provider === 'none') { signInBtn.classList.add('hidden'); authStatus.textContent = ''; return; }
+      if (provider === 'google') {
+        authStatus.textContent = googleAccessToken ? 'Signed in' : 'Not signed in';
+        signInBtn.textContent = googleAccessToken ? 'Sign Out' : 'Sign In';
+      } else if (provider === 'onedrive') {
+        authStatus.textContent = microsoftAccessToken ? 'Signed in' : 'Not signed in';
+        signInBtn.textContent = microsoftAccessToken ? 'Sign Out' : 'Sign In';
+      }
+    }
+    cloudSelect.addEventListener('change', updateAuthStatus);
+    signInBtn.addEventListener('click', () => {
+      const provider = cloudSelect.value;
+      if (provider === 'google') {
+        if (googleAccessToken) {
+          try { google.accounts.oauth2.revoke(googleAccessToken); } catch {}
+          gapi.client.setToken(null); googleAccessToken = null; notify('Signed out of Google', 'info');
+        } else { handleGoogleAuth(); }
+      } else if (provider === 'onedrive') {
+        if (microsoftAccessToken) { msalInstance.logoutPopup().catch(console.error); microsoftAccessToken = null; microsoftAccount = null; notify('Signed out of Microsoft', 'info'); }
+        else { handleMicrosoftAuth(); }
+      }
+      updateAuthStatus();
+    });
 
-            try {
-                const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-                    method: 'POST',
-                    headers: new Headers({ 'Authorization': 'Bearer ' + googleAccessToken }),
-                    body: form,
-                });
-                const val = await res.json();
-                if (val.error) throw new Error(val.error.message);
-                return val.id;
-            } catch (err) {
-                alert('Google Upload error: ' + err.message);
-                throw err;
-            }
-        }
+    // ===== Log actions =====
+    logBtn.addEventListener('click', async () => {
+      const date = dateInput.value || todayISO();
+      const category = categorySelect.value !== 'Select' ? categorySelect.value : 'Other';
+      const amount = parseFloat(amountInput.value);
+      const desc = (descInput.value || '').trim();
+      if (!desc || isNaN(amount) || amount <= 0) { notify('Enter a valid amount and description.', 'warn'); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { notify('Invalid date.', 'warn'); return; }
+      if (!capturedBlob) { notify('Capture a photo first.', 'warn'); return; }
 
-        // MSAL Setup
-        const MSAL_CLIENT_ID = 'YOUR_MSAL_CLIENT_ID';
-        const MSAL_AUTHORITY = 'https://login.microsoftonline.com/common';
-        const MSAL_REDIRECT_URI = window.location.origin;
-        const MSAL_SCOPES = ['Files.ReadWrite'];
+      const timestamp = new Date().toISOString();
+      const filename = `receipt_${timestamp.replace(/[:.-]/g, '')}.jpg`;
+      let cloud = { id: null, url: null, provider: cloudSelect.value };
 
-        const msalConfig = {
-            auth: {
-                clientId: MSAL_CLIENT_ID,
-                authority: MSAL_AUTHORITY,
-                redirectUri: MSAL_REDIRECT_URI,
-            },
-        };
+      if (cloud.provider !== 'none') {
+        try {
+          if (cloud.provider === 'google' && googleAccessToken) cloud = { ...(await uploadToGoogle(capturedBlob, filename)), provider: 'google' };
+          else if (cloud.provider === 'onedrive' && microsoftAccessToken) cloud = { ...(await uploadToOneDrive(capturedBlob, filename)), provider: 'onedrive' };
+          else { notify('Please sign in to your cloud first.', 'warn'); return; }
+        } catch (err) { notify('Upload failed: ' + err.message, 'bad'); return; }
+      }
 
-        const msalInstance = new msal.PublicClientApplication(msalConfig);
-        let microsoftAccount = null;
-        let microsoftAccessToken = null;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataURL = reader.result;
+        logs.push({ timestamp, date, category, amount, desc, photoDataURL: dataURL, cloudId: cloud.id, cloudUrl: cloud.url, provider: cloud.provider });
+        saveLogs();
+        notify('Logged!', 'good');
+        resetForm();
+      };
+      reader.readAsDataURL(capturedBlob);
+    });
 
-        async function handleMicrosoftAuth() {
-            try {
-                const response = await msalInstance.loginPopup({scopes: MSAL_SCOPES});
-                microsoftAccount = response.account;
-                microsoftAccessToken = response.accessToken;
-                updateAuthStatus();
-            } catch (err) {
-                console.error('MSAL error:', err);
-                alert('Microsoft Auth Error: ' + err.message);
-            }
-        }
+    function resetForm() {
+      dateInput.value = todayISO();
+      categorySelect.value = 'Select'; amountInput.value = ''; descInput.value = '';
+      previewImg.classList.add('hidden'); logBtn.classList.add('hidden'); capturedBlob = null;
+      if (cameraSelect.value) startCamera(cameraSelect.value); else startCamera();
+    }
 
-        async function getMicrosoftToken() {
-            try {
-                const response = await msalInstance.acquireTokenSilent({
-                    scopes: MSAL_SCOPES,
-                    account: microsoftAccount,
-                });
-                microsoftAccessToken = response.accessToken;
-            } catch (err) {
-                console.log('Silent failed');
-                const response = await msalInstance.acquireTokenPopup({scopes: MSAL_SCOPES});
-                microsoftAccessToken = response.accessToken;
-            }
-        }
+    // ===== View logs =====
+    viewLogsBtn.addEventListener('click', () => { renderLogs(); logsSection.classList.remove('hidden'); refreshMonthFilter(); });
+    monthFilter.addEventListener('change', () => renderLogs());
 
-        async function uploadToOneDrive(blob, filename) {
-            await getMicrosoftToken();
-            const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}:/content`;
-            const res = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': 'Bearer ' + microsoftAccessToken,
-                    'Content-Type': 'image/jpeg',
-                },
-                body: blob,
-            });
-            const val = await res.json();
-            if (val.error) throw new Error(val.error.message);
-            return val.id;
-        }
-
-        // App Logic
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const previewImg = document.getElementById('preview-img');
-        const dateInput = document.getElementById('date');
-        const categorySelect = document.getElementById('category');
-        const amountInput = document.getElementById('amount');
-        const descInput = document.getElementById('desc');
-        const captureBtn = document.getElementById('capture');
-        const logBtn = document.getElementById('log-btn');
-        const viewLogsBtn = document.getElementById('view-logs');
-        const logsDiv = document.getElementById('logs');
-        const logTableBody = document.querySelector('#log-table tbody');
-        const totalAmountP = document.getElementById('total-amount');
-        const toggleThemeBtn = document.getElementById('toggle-theme');
-        const cloudSelect = document.getElementById('cloud-provider');
-        const signInBtn = document.getElementById('sign-in');
-        const authStatus = document.getElementById('auth-status');
-        const popup = document.getElementById('popup');
-        const popupImg = document.getElementById('popup-img');
-        const closePopup = document.getElementById('close-popup');
-        const clearLogsBtn = document.getElementById('clear-logs');
-        const cameraSelect = document.getElementById('camera-select');
-        const nativeCaptureBtn = document.getElementById('native-capture');
-        const fileInput = document.getElementById('file-input');
-
-        let stream;
-        let logs = JSON.parse(localStorage.getItem('expenses_logs')) || [];
-        let capturedBlob = null;
-        let cameras = [];
-
-        async function loadCameras() {
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                cameras = devices.filter(device => device.kind === 'videoinput');
-                cameraSelect.innerHTML = cameras.map((device, idx) => `<option value="${device.deviceId}">${device.label || 'Camera ' + (idx + 1)}</option>`).join('');
-                if (cameras.length > 0) {
-                    startCamera(cameras[0].deviceId);
-                }
-            } catch (err) {
-                console.error('Enumerate devices error:', err);
-            }
-        }
-
-        async function startCamera(deviceId) {
-            stopCamera();
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({video: {deviceId: {exact: deviceId || cameras[0]?.deviceId}}});
-                video.srcObject = stream;
-                video.style.display = 'block';
-                previewImg.style.display = 'none';
-            } catch (err) {
-                console.error('Camera error:', err);
-                alert('Camera access error: ' + err.message);
-            }
-        }
-
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-            }
-        }
-
-        cameraSelect.addEventListener('change', (e) => startCamera(e.target.value));
-
-        nativeCaptureBtn.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files[0]) {
-                capturedBlob = e.target.files[0];
-                previewImg.src = URL.createObjectURL(capturedBlob);
-                previewImg.style.display = 'block';
-                video.style.display = 'none';
-                logBtn.style.display = 'block';
-                // Optionally trigger OCR here
-                processOCR(capturedBlob);
-            }
+    function renderLogs() {
+      logTbody.innerHTML = '';
+      const monthSel = monthFilter.value;
+      let total = 0; let count = 0;
+      logs
+        .filter(l => monthSel === 'all' || (l.date || '').startsWith(monthSel))
+        .forEach((log, index) => {
+          const tr = document.createElement('tr'); tr.className = 'border-b border-bg-line';
+          const cloudCell = log.cloudUrl ? `<a href="${log.cloudUrl}" target="_blank" class="underline">Open</a>` : (log.cloudId ? (log.provider==='google' ? `<a class='underline' target='_blank' href='https://drive.google.com/file/d/${log.cloudId}/view'>Open</a>` : 'Link') : '—');
+          tr.innerHTML = `
+            <td class="py-2 pr-2 align-top">${log.date}</td>
+            <td class="py-2 pr-2 align-top">${log.category}</td>
+            <td class="py-2 pr-2 align-top">${fmtGBP(log.amount)}</td>
+            <td class="py-2 pr-2 align-top">${(log.desc||'').slice(0,60)}${(log.desc||'').length>60?'…':''}</td>
+            <td class="py-2 pr-2 align-top"><button class="px-2 py-1 text-xs rounded-lg bg-bg-card border border-bg-line" data-view="${index}">View</button></td>
+            <td class="py-2 pr-2 align-top">${cloudCell}</td>
+            <td class="py-2 pr-2 align-top"><button class="px-2 py-1 text-xs rounded-lg bg-bad/20 border border-bad/40" data-del="${index}">Delete</button></td>
+          `;
+          logTbody.appendChild(tr);
+          total += Number(log.amount) || 0; count++;
         });
+      totalAmountP.textContent = `Total: £${fmtGBP(total)}`;
+      countInfo.textContent = `${count} entr${count===1?'y':'ies'}`;
 
-        async function processOCR(blob) {
-            try {
-                const worker = await Tesseract.createWorker('eng');
-                const { data: { text } } = await worker.recognize(blob);
-                await worker.terminate();
+      // Delegate events
+      logTbody.querySelectorAll('button[data-view]').forEach(btn => btn.addEventListener('click', () => showPhoto(Number(btn.dataset.view)) ));
+      logTbody.querySelectorAll('button[data-del]').forEach(btn => btn.addEventListener('click', () => deleteLog(Number(btn.dataset.del)) ));
+    }
 
-                const amountMatch = text.match(/(\d+\.\d{2})/);
-                const dateMatch = text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
-                const descLines = text.split('\n').filter(line => line.trim() && !line.match(/total|date/i));
+    function deleteLog(index) {
+      if (!confirm('Delete this entry?')) return;
+      logs.splice(index, 1); saveLogs(); renderLogs();
+    }
 
-                if (amountMatch) amountInput.value = parseFloat(amountMatch[0]);
-                if (dateMatch) {
-                    let [m, d, y] = dateMatch[0].split('/');
-                    dateInput.value = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                }
-                descInput.value = descLines.join(' ').substring(0, 50);
-                categorySelect.value = 'Other';
+    clearLogsBtn.addEventListener('click', () => {
+      if (!confirm('Clear ALL entries?')) return;
+      logs = []; saveLogs(); renderLogs();
+    });
 
-                alert('Scan done! Edit & log.');
-            } catch (err) {
-                alert('OCR error: ' + err.message);
-            }
-        }
+    function showPhoto(index) { popupImg.src = logs[index].photoDataURL; popup.classList.remove('hidden'); }
+    closePopup.addEventListener('click', () => popup.classList.add('hidden'));
+    popup.addEventListener('click', (e) => { if (e.target === popup) popup.classList.add('hidden'); });
 
-        function updateAuthStatus() {
-            const provider = cloudSelect.value;
-            signInBtn.style.display = 'block';
-            if (provider === 'none') {
-                signInBtn.style.display = 'none';
-                authStatus.textContent = '';
-            } else if (provider === 'google') {
-                if (googleAccessToken) {
-                    authStatus.textContent = 'Signed in';
-                    signInBtn.textContent = 'Sign Out';
-                } else {
-                    authStatus.textContent = 'Not signed in';
-                    signInBtn.textContent = 'Sign In';
-                }
-            } else if (provider === 'onedrive') {
-                if (microsoftAccessToken) {
-                    authStatus.textContent = 'Signed in';
-                    signInBtn.textContent = 'Sign Out';
-                } else {
-                    authStatus.textContent = 'Not signed in';
-                    signInBtn.textContent = 'Sign In';
-                }
-            }
-        }
+    // ===== Export / Import =====
+    exportCsv.addEventListener('click', () => {
+      if (!logs.length) { notify('No data to export.', 'warn'); return; }
+      const headers = ['timestamp','date','category','amount','desc','provider','cloudId','cloudUrl'];
+      const rows = logs.map(l => headers.map(h => ("" + (l[h] ?? '')).replaceAll('"','""')));
+      const csv = [headers.join(','), ...rows.map(r => '"' + r.join('","') + '"')].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `receipt_logs_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+    });
 
-        cloudSelect.addEventListener('change', updateAuthStatus);
+    importJsonBtn.addEventListener('click', () => importFile.click());
+    importFile.addEventListener('change', async () => {
+      const f = importFile.files[0]; if (!f) return; const text = await f.text();
+      try { const arr = JSON.parse(text); if (!Array.isArray(arr)) throw new Error('Invalid JSON');
+        logs = arr; saveLogs(); notify('Imported records.', 'good'); renderLogs(); refreshMonthFilter();
+      } catch { notify('Import failed.', 'bad'); }
+    });
 
-        signInBtn.addEventListener('click', () => {
-            const provider = cloudSelect.value;
-            if (provider === 'google') {
-                if (googleAccessToken) {
-                    google.accounts.oauth2.revoke(googleAccessToken);
-                    gapi.client.setToken('');
-                    googleAccessToken = null;
-                } else {
-                    handleGoogleAuth();
-                }
-            } else if (provider === 'onedrive') {
-                if (microsoftAccessToken) {
-                    msalInstance.logoutPopup().catch(err => console.error(err));
-                    microsoftAccessToken = null;
-                    microsoftAccount = null;
-                } else {
-                    handleMicrosoftAuth();
-                }
-            }
-            updateAuthStatus();
-        });
+    // ===== Init =====
+    function updateDefaults() {
+      dateInput.value = todayISO();
+    }
 
-        captureBtn.addEventListener('click', async () => {
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            canvas.getContext('2d').drawImage(video, 0, 0);
+    function init() {
+      applyTheme(); updateDefaults(); loadCameras(); updateAuthStatus(); refreshMonthFilter();
+    }
 
-            canvas.toBlob(async (blob) => {
-                capturedBlob = blob;
-                previewImg.src = URL.createObjectURL(blob);
-                previewImg.style.display = 'block';
-                video.style.display = 'none';
-
-                processOCR(blob);
-                logBtn.style.display = 'block';
-            }, 'image/jpeg');
-        });
-
-        logBtn.addEventListener('click', async () => {
-            const date = dateInput.value || new Date().toISOString().split('T')[0];
-            const category = categorySelect.value !== 'Select' ? categorySelect.value : 'Other';
-            const amount = parseFloat(amountInput.value);
-            const desc = descInput.value;
-
-            if (!desc || isNaN(amount) || amount <= 0) {
-                alert('Valid amount & desc required.');
-                return;
-            }
-
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                alert('Invalid date.');
-                return;
-            }
-
-            if (!capturedBlob) {
-                alert('Capture first.');
-                return;
-            }
-
-            const timestamp = new Date().toISOString();
-            const filename = `receipt_${timestamp.replace(/[:.-]/g, '')}.jpg`;
-
-            let cloudId = null;
-            const provider = cloudSelect.value;
-            if (provider !== 'none') {
-                try {
-                    if (provider === 'google' && googleAccessToken) {
-                        cloudId = await uploadToGoogle(capturedBlob, filename);
-                    } else if (provider === 'onedrive' && microsoftAccessToken) {
-                        cloudId = await uploadToOneDrive(capturedBlob, filename);
-                    } else {
-                        alert('Sign in to cloud.');
-                        return;
-                    }
-                } catch (err) {
-                    alert('Upload failed: ' + err.message);
-                }
-            }
-
-            const reader = new FileReader();
-            reader.onload = () => {
-                const dataURL = reader.result;
-                logs.push({timestamp, date, category, amount, desc, photoDataURL: dataURL, cloudId, provider});
-                localStorage.setItem('expenses_logs', JSON.stringify(logs));
-                alert('Logged!');
-                resetForm();
-            };
-            reader.readAsDataURL(capturedBlob);
-        });
-
-        function resetForm() {
-            dateInput.value = new Date().toISOString().split('T')[0];
-            categorySelect.value = 'Select';
-            amountInput.value = '';
-            descInput.value = '';
-            previewImg.style.display = 'none';
-            logBtn.style.display = 'none';
-            capturedBlob = null;
-            startCamera(cameraSelect.value);
-        }
-
-        viewLogsBtn.addEventListener('click', () => {
-            logsDiv.style.display = 'block';
-            logTableBody.innerHTML = '';
-            let total = 0;
-            logs.forEach((log, index) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${log.date}</td>
-                    <td>${log.category}</td>
-                    <td>${log.amount.toFixed(2)}</td>
-                    <td>${log.desc.substring(0, 10)}...</td>
-                    <td><button onclick="showPhoto(${index})">V</button></td>
-                    <td>${log.cloudId ? 'Link' : 'L'}</td>
-                    <td><button onclick="deleteLog(${index})">X</button></td>
-                `;
-                logTableBody.appendChild(row);
-                total += log.amount;
-            });
-            totalAmountP.textContent = `Total: ${total.toFixed(2)}`;
-        });
-
-        window.deleteLog = (index) => {
-            if (confirm('Delete?')) {
-                logs.splice(index, 1);
-                localStorage.setItem('expenses_logs', JSON.stringify(logs));
-                viewLogsBtn.click();
-            }
-        };
-
-        clearLogsBtn.addEventListener('click', () => {
-            if (confirm('Clear all?')) {
-                logs = [];
-                localStorage.setItem('expenses_logs', JSON.stringify(logs));
-                viewLogsBtn.click();
-            }
-        });
-
-        window.showPhoto = (index) => {
-            popupImg.src = logs[index].photoDataURL;
-            popup.style.display = 'block';
-        };
-
-        closePopup.addEventListener('click', () => {
-            popup.style.display = 'none';
-        });
-
-        toggleThemeBtn.addEventListener('click', () => {
-            document.body.classList.toggle('dark');
-        });
-
-        // Init
-        loadCameras();
-        updateAuthStatus();
-        dateInput.value = new Date().toISOString().split('T')[0];
-    </script>
+    init();
+  </script>
 </body>
 </html>
-```
