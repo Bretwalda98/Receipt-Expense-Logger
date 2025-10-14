@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Expense Logger</title>
+    <script src="https://unpkg.com/tesseract.js@v5.1.1/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --accent-color: #007bff;
+            --input-bg: #f8f9fa;
+            --button-bg: #007bff;
+            --button-text: #ffffff;
+        }
+
+        .dark {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --accent-color: #bb86fc;
+            --input-bg: #1e1e1e;
+            --button-bg: #bb86fc;
+            --button-text: #000000;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s, color 0.3s;
+            overflow-y: auto; /* Allow scrolling if needed */
+        }
+
+        .container {
+            max-width: 100%; /* Full width for mobile */
+            margin: 10px auto;
+            padding: 10px;
+            background-color: var(--bg-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        header {
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .form-group {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        input, select, button {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: 0.9em;
+        }
+
+        button {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        video {
+            width: 100%;
+            height: 200px; /* Smaller height for better fit */
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        #preview-img {
+            width: 100%;
+            height: auto;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        #logs {
+            margin-top: 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8em;
+        }
+
+        th, td {
+            padding: 6px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-color);
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            display: none;
+            z-index: 1000;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+        }
+
+        #popup img {
+            max-width: 100%;
+            max-height: 70vh;
+        }
+
+        #close-popup {
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        #auth-status {
+            margin-bottom: 5px;
+            font-style: italic;
+            font-size: 0.8em;
+        }
+
+        #log-btn {
+            display: none; /* Shown after scan */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>Receipt Expense Logger</header>
+        <div class="form-group">
+            <label for="cloud-provider">Cloud Storage:</label>
+            <select id="cloud-provider">
+                <option value="none">None (Local Only)</option>
+                <option value="google">Google Drive</option>
+                <option value="onedrive">OneDrive</option>
+            </select>
+            <div id="auth-status"></div>
+            <button id="sign-in" style="display: none;">Sign In</button>
+        </div>
+        <div class="form-group">
+            <label for="date">Date:</label>
+            <input type="date" id="date">
+        </div>
+        <div class="form-group">
+            <label for="category">Category:</label>
+            <select id="category">
+                <option>Select Category</option>
+                <option>Food</option>
+                <option>Travel</option>
+                <option>Supplies</option>
+                <option>Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="amount">Amount:</label>
+            <input type="number" step="0.01" id="amount" placeholder="e.g., 25.50">
+        </div>
+        <div class="form-group">
+            <label for="desc">Description:</label>
+            <input type="text" id="desc" placeholder="e.g., Lunch meeting">
+        </div>
+        <video id="video" autoplay></video>
+        <img id="preview-img" alt="Captured Preview">
+        <canvas id="canvas" style="display:none;"></canvas>
+        <button id="capture">Capture and Scan Receipt</button>
+        <button id="log-btn">Log Expense</button>
+        <button id="view-logs">View Logs</button>
+        <div id="logs" style="display:none;">
+            <table id="log-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Desc</th>
+                        <th>Photo</th>
+                        <th>Cloud</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <p id="total-amount"></p>
+        </div>
+        <button id="toggle-theme">Toggle Theme</button>
+    </div>
+
+    <div id="popup">
+        <img id="popup-img">
+        <button id="close-popup">Close</button>
+    </div>
+
+    <!-- Google API Scripts -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+
+    <!-- MSAL Script -->
+    <script src="https://alcdn.msauth.net/browser/2.0.0/js/msal-browser.min.js"></script>
+
+    <script>
+        // Google API Setup - NOTE: Replace with your actual IDs/keys from Google Cloud Console (enable Drive API, create OAuth Client ID for Web)
+        const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // e.g., '1234567890-abcde.apps.googleusercontent.com'
+        const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY'; // e.g., 'AIzaSy...'
+
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let googleAccessToken = null;
+
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            try {
+                await gapi.client.init({
+                    apiKey: GOOGLE_API_KEY,
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                gapiInited = true;
+                updateAuthStatus();
+            } catch (err) {
+                alert('Google API init error: ' + err.message + '. Check your API_KEY and CLIENT_ID.');
+            }
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: GOOGLE_SCOPES,
+                callback: '',
+            });
+            gisInited = true;
+            updateAuthStatus();
+        }
+
+        function handleGoogleAuth() {
+            if (!gisInited || !gapiInited) {
+                alert('Google APIs not fully loaded. Try refreshing.');
+                return;
+            }
+            tokenClient.callback = (resp) => {
+                if (resp.error) {
+                    alert('Google Auth Error: ' + resp.error + '. Ensure CLIENT_ID is correct and app is published/verified if needed.');
+                    return;
+                }
+                googleAccessToken = resp.access_token;
+                updateAuthStatus();
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        async function uploadToGoogle(blob, filename) {
+            const metadata = {
+                'name': filename,
+                'mimeType': 'image/jpeg',
+            };
+
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+            form.append('file', blob);
+
+            const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+                method: 'POST',
+                headers: new Headers({ 'Authorization': 'Bearer ' + googleAccessToken }),
+                body: form,
+            });
+            const val = await res.json();
+            if (val.error) throw new Error(val.error.message);
+            return val.id;
+        }
+
+        // MSAL Setup - NOTE: Replace with your Azure App Registration Client ID (add Microsoft Graph Files.ReadWrite permission)
+        const MSAL_CLIENT_ID = 'YOUR_MSAL_CLIENT_ID'; // e.g., '12345678-1234-1234-1234-1234567890ab'
+        const MSAL_AUTHORITY = 'https://login.microsoftonline.com/common';
+        const MSAL_REDIRECT_URI = window.location.origin;
+        const MSAL_SCOPES = ['Files.ReadWrite'];
+
+        const msalConfig = {
+            auth: {
+                clientId: MSAL_CLIENT_ID,
+                authority: MSAL_AUTHORITY,
+                redirectUri: MSAL_REDIRECT_URI,
+            },
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+        let microsoftAccount = null;
+        let microsoftAccessToken = null;
+
+        async function handleMicrosoftAuth() {
+            try {
+                const response = await msalInstance.loginPopup({scopes: MSAL_SCOPES});
+                microsoftAccount = response.account;
+                microsoftAccessToken = response.accessToken;
+                updateAuthStatus();
+            } catch (err) {
+                alert('Microsoft Auth Error: ' + err.message + '. Check your CLIENT_ID.');
+            }
+        }
+
+        async function getMicrosoftToken() {
+            try {
+                const response = await msalInstance.acquireTokenSilent({
+                    scopes: MSAL_SCOPES,
+                    account: microsoftAccount,
+                });
+                microsoftAccessToken = response.accessToken;
+            } catch (err) {
+                console.log('Silent token failed, popup');
+                const response = await msalInstance.acquireTokenPopup({scopes: MSAL_SCOPES});
+                microsoftAccessToken = response.accessToken;
+            }
+        }
+
+        async function uploadToOneDrive(blob, filename) {
+            await getMicrosoftToken();
+            const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}:/content`;
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + microsoftAccessToken,
+                    'Content-Type': 'image/jpeg',
+                },
+                body: blob,
+            });
+            const val = await res.json();
+            if (val.error) throw new Error(val.error.message);
+            return val.id;
+        }
+
+        // App Logic
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const previewImg = document.getElementById('preview-img');
+        const dateInput = document.getElementById('date');
+        const categorySelect = document.getElementById('category');
+        const amountInput = document.getElementById('amount');
+        const descInput = document.getElementById('desc');
+        const captureBtn = document.getElementById('capture');
+        const logBtn = document.getElementById('log-btn');
+        const viewLogsBtn = document.getElementById('view-logs');
+        const logsDiv = document.getElementById('logs');
+        const logTableBody = document.querySelector('#log-table tbody');
+        const totalAmountP = document.getElementById('total-amount');
+        const toggleThemeBtn = document.getElementById('toggle-theme');
+        const cloudSelect = document.getElementById('cloud-provider');
+        const signInBtn = document.getElementById('sign-in');
+        const authStatus = document.getElementById('auth-status');
+        const popup = document.getElementById('popup');
+        const popupImg = document.getElementById('popup-img');
+        const closePopup = document.getElementById('close-popup');
+
+        let stream;
+        let logs = JSON.parse(localStorage.getItem('expenses_logs')) || [];
+        let capturedBlob = null;
+
+        async function startCamera() {
+            if (!window.isSecureContext) {
+                alert('Camera requires secure context (HTTPS/localhost).');
+                return;
+            }
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('Camera error:', err);
+                alert('Camera access error: ' + err.message);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function updateAuthStatus() {
+            const provider = cloudSelect.value;
+            signInBtn.style.display = 'block';
+            if (provider === 'none') {
+                signInBtn.style.display = 'none';
+                authStatus.textContent = '';
+            } else if (provider === 'google') {
+                if (googleAccessToken) {
+                    authStatus.textContent = 'Signed in to Google Drive';
+                    signInBtn.textContent = 'Sign Out';
+                } else {
+                    authStatus.textContent = 'Not signed in';
+                    signInBtn.textContent = 'Sign In to Google';
+                }
+            } else if (provider === 'onedrive') {
+                if (microsoftAccessToken) {
+                    authStatus.textContent = 'Signed in to OneDrive';
+                    signInBtn.textContent = 'Sign Out';
+                } else {
+                    authStatus.textContent = 'Not signed in';
+                    signInBtn.textContent = 'Sign In to OneDrive';
+                }
+            }
+        }
+
+        cloudSelect.addEventListener('change', updateAuthStatus);
+
+        signInBtn.addEventListener('click', () => {
+            const provider = cloudSelect.value;
+            if (provider === 'google') {
+                if (googleAccessToken) {
+                    google.accounts.oauth2.revoke(googleAccessToken);
+                    gapi.client.setToken('');
+                    googleAccessToken = null;
+                } else {
+                    handleGoogleAuth();
+                }
+            } else if (provider === 'onedrive') {
+                if (microsoftAccessToken) {
+                    msalInstance.logoutPopup().catch(err => console.error(err));
+                    microsoftAccessToken = null;
+                    microsoftAccount = null;
+                } else {
+                    handleMicrosoftAuth();
+                }
+            }
+            updateAuthStatus();
+        });
+
+        captureBtn.addEventListener('click', async () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+
+            canvas.toBlob(async (blob) => {
+                capturedBlob = blob;
+                previewImg.src = URL.createObjectURL(blob);
+                previewImg.style.display = 'block';
+                video.style.display = 'none'; // Hide video after capture
+
+                // Run OCR
+                try {
+                    const worker = await Tesseract.createWorker('eng');
+                    const { data: { text } } = await worker.recognize(blob);
+                    await worker.terminate();
+
+                    // Parse text for info
+                    const amountMatch = text.match(/(\d+\.\d{2})/); // Simple amount regex
+                    const dateMatch = text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/); // MM/DD/YYYY
+                    const descLines = text.split('\n').filter(line => line.trim() && !line.match(/total|date/i)); // Rough desc
+
+                    if (amountMatch) amountInput.value = parseFloat(amountMatch[0]);
+                    if (dateMatch) dateInput.value = dateMatch[0].split('/').reverse().join('-'); // To YYYY-MM-DD
+                    descInput.value = descLines.join(' ').substring(0, 100); // Truncate
+                    categorySelect.value = 'Other'; // Default, or parse if possible
+
+                    alert('Scan complete! Edit fields if needed, then log.');
+                    logBtn.style.display = 'block';
+                } catch (err) {
+                    alert('OCR error: ' + err.message + '. Proceed manually.');
+                    logBtn.style.display = 'block';
+                }
+            }, 'image/jpeg');
+        });
+
+        logBtn.addEventListener('click', async () => {
+            const date = dateInput.value || new Date().toISOString().split('T')[0];
+            const category = categorySelect.value !== 'Select Category' ? categorySelect.value : 'Other';
+            const amount = parseFloat(amountInput.value);
+            const desc = descInput.value;
+
+            if (!desc || isNaN(amount) || amount <= 0) {
+                alert('Please enter valid amount and description.');
+                return;
+            }
+
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                alert('Invalid date format.');
+                return;
+            }
+
+            if (!capturedBlob) {
+                alert('Capture a photo first.');
+                return;
+            }
+
+            const timestamp = new Date().toISOString();
+            const filename = `receipt_${timestamp.replace(/[:.-]/g, '')}.jpg`;
+
+            let cloudId = null;
+            const provider = cloudSelect.value;
+            if (provider !== 'none') {
+                try {
+                    if (provider === 'google' && googleAccessToken) {
+                        cloudId = await uploadToGoogle(capturedBlob, filename);
+                    } else if (provider === 'onedrive' && microsoftAccessToken) {
+                        cloudId = await uploadToOneDrive(capturedBlob, filename);
+                    } else {
+                        alert('Please sign in to the selected cloud provider.');
+                        return;
+                    }
+                } catch (err) {
+                    alert('Upload error: ' + err.message);
+                }
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const dataURL = reader.result;
+                logs.push({timestamp, date, category, amount, desc, photoDataURL: dataURL, cloudId, provider});
+                localStorage.setItem('expenses_logs', JSON.stringify(logs));
+                alert('Expense logged!');
+                resetForm();
+            };
+            reader.readAsDataURL(capturedBlob);
+        });
+
+        function resetForm() {
+            dateInput.value = new Date().toISOString().split('T')[0];
+            categorySelect.value = 'Select Category';
+            amountInput.value = '';
+            descInput.value = '';
+            previewImg.style.display = 'none';
+            video.style.display = 'block';
+            logBtn.style.display = 'none';
+            capturedBlob = null;
+        }
+
+        viewLogsBtn.addEventListener('click', () => {
+            logsDiv.style.display = 'block';
+            logTableBody.innerHTML = '';
+            let total = 0;
+            logs.forEach((log, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${log.date}</td>
+                    <td>${log.category}</td>
+                    <td>${log.amount.toFixed(2)}</td>
+                    <td>${log.desc.substring(0, 20)}...</td>
+                    <td><button onclick="showPhoto(${index})">View</button></td>
+                    <td>${log.cloudId ? `<a href="${log.provider === 'google' ? 'https://drive.google.com/file/d/' + log.cloudId + '/view' : 'https://onedrive.live.com/?id=' + log.cloudId}" target="_blank">Link</a>` : 'Local'}</td>
+                `;
+                logTableBody.appendChild(row);
+                total += log.amount;
+            });
+            totalAmountP.textContent = `Total: ${total.toFixed(2)}`;
+        });
+
+        window.showPhoto = (index) => {
+            popupImg.src = logs[index].photoDataURL;
+            popup.style.display = 'block';
+        };
+
+        closePopup.addEventListener('click', () => {
+            popup.style.display = 'none';
+        });
+
+        toggleThemeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+        });
+
+        // Init
+        startCamera();
+        updateAuthStatus();
+        dateInput.value = new Date().toISOString().split('T')[0];
+    </script>
+</body>
+</html>
