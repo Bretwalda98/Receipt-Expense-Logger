@@ -122,15 +122,14 @@
       <p id="ocr-status" class="text-xs text-text-muted mt-1"></p>
     </div>
     <div>
-      <label class="text-xs block mb-1">Actions</label>
-      <div class="grid grid-cols-2 gap-2">
-        <button id="log-btn" class="text-xs px-3 py-2 rounded-xl bg-good/90 hover:bg-good transition shadow-card hidden">Log</button>
-        <button id="view-logs" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">View Logs</button>
-        $1
-        <button id="export-xlsx" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Export Excel (.xlsx)</button>
-        <button id="import-json" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Import JSON</button>
+      $1<div class="grid grid-cols-2 gap-2">
+        <button id="log-btn" class="text-xs px-3 py-2 rounded-xl bg-good/90 hover:bg-good transition shadow-card hidden">Log<\/button>
+        <button id="view-logs" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">View Logs<\/button>
+        <button id="export-csv" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Export CSV<\/button>
+        <button id="export-xlsx" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Export Excel (.xlsx)<\/button>
+        <button id="import-json" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Import JSON<\/button>
         <input id="import-file" type="file" accept="application/json" class="hidden" />
-      </div>
+      <\/div>
       <div id="toast" class="mt-3 text-xs hidden"></div>
     </div>
   </div>
