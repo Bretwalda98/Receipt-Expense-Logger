@@ -111,7 +111,6 @@
       <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="text-xs block mb-1">Camera</label>
-          <!-- Hidden unless multiple back cameras are available -->
           <select id="camera-select" class="w-full bg-bg-card border border-bg-line rounded-lg px-2 py-2 text-sm hidden"></select>
 
           <video id="video" autoplay playsinline class="mt-2 w-full aspect-[4/3] rounded-lg border border-bg-line"></video>
@@ -121,14 +120,17 @@
           <div class="flex flex-wrap gap-2 mt-2">
             <button id="capture" class="flex-1 text-xs px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition shadow-card">Capture & Scan</button>
             <button id="native-capture" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Use Native</button>
+
             <!-- Upload from gallery / files -->
             <button id="upload-photo" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line">Upload Photo</button>
+            <button id="upload-batch" class="text-xs px-3 py-2 rounded-xl bg-bg-card border border-bg-line" title="Upload up to 25 receipts">Upload up to 25</button>
 
             <input type="file" id="file-input" accept="image/*" capture="environment" class="hidden">
-            <!-- plain file chooser that doesn't force camera -->
             <input type="file" id="upload-file" accept="image/*" class="hidden" />
+            <input type="file" id="upload-batch-file" accept="image/*" multiple class="hidden" />
           </div>
           <p id="ocr-status" class="text-xs text-text-muted mt-1"></p>
+          <p id="batch-status" class="text-xs text-text-muted mt-1"></p>
         </div>
 
         <div>
@@ -155,6 +157,10 @@
         <div class="flex gap-2">
           <select id="month-filter" class="text-xs bg-bg-card border border-bg-line rounded-lg px-2 py-1">
             <option value="all">All months</option>
+          </select>
+          <select id="sort-date" class="text-xs bg-bg-card border border-bg-line rounded-lg px-2 py-1" title="Sort by date">
+            <option value="desc" selected>Newest first</option>
+            <option value="asc">Oldest first</option>
           </select>
           <button id="clear-logs" class="text-xs px-3 py-1.5 rounded-xl bg-bad/80 hover:bg-bad">Clear All</button>
         </div>
@@ -272,9 +278,12 @@
     const closePopup = $('close-popup'), clearLogsBtn = $('clear-logs'), cameraSelect = $('camera-select');
     const nativeCaptureBtn = $('native-capture'), fileInput = $('file-input');
     const uploadBtn = $('upload-photo'), uploadFile = $('upload-file');
+    const uploadBatchBtn = $('upload-batch'), uploadBatchFile = $('upload-batch-file');
+    const batchStatus = $('batch-status');
     const toast = $('toast'), ocrStatus = $('ocr-status'), exportCsv = $('export-csv');
     const exportJsonBtn = $('export-json'), autosaveBtn = $('autosave-file');
     const importJsonBtn = $('import-json'), importFile = $('import-file'), monthFilter = $('month-filter'), exportXlsxBtn = $('export-xlsx');
+    const sortDateSel = $('sort-date');
 
     let stream; let capturedBlob = null; let cameras = [];
     let logs = readLogs();
@@ -290,7 +299,7 @@
       toast.className = base + ' ' + (map[level] || map.info) + ' mt-3';
       setTimeout(()=>toast.classList.add('hidden'), 3200);
     }
-    const fmtGBP = (n) => isNaN(n) ? '' : Number(n).toFixed(2);
+    const fmtGBP = (n) => isNaN(n) || n===null ? '' : Number(n).toFixed(2);
     const todayISO = () => new Date().toISOString().split('T')[0];
 
     // ===== IndexedDB for photos =====
@@ -379,36 +388,81 @@
     nativeCaptureBtn.addEventListener('click', ()=> fileInput.click());
     fileInput.addEventListener('change', (e)=>{ if(e.target.files[0]) handleBlob(e.target.files[0]); });
 
-    // Upload from gallery/files without forcing camera
+    // Upload from gallery/files (single)
     uploadBtn.addEventListener('click', ()=> uploadFile.click());
     uploadFile.addEventListener('change', (e)=>{ const f = e.target.files && e.target.files[0]; if(f){ handleBlob(f); } });
 
-    // ===== OCR =====
+    // ===== OCR (single) =====
     async function processOCR(blob){
       ocrStatus.textContent = 'Scanning…';
       try{
         const worker = await Tesseract.createWorker('eng');
         const { data:{ text } } = await worker.recognize(blob);
         await worker.terminate(); ocrStatus.textContent = '';
-        parseReceiptText(text); notify('Scan complete – check fields.','good');
+        const parsed = parseFieldsFromText(text);
+        if(parsed.amount!=null) amountInput.value = fmtGBP(parsed.amount);
+        if(parsed.date) dateInput.value = parsed.date;
+        if(parsed.desc) descInput.value = parsed.desc;
+        if(categorySelect.value==='Select') categorySelect.value='Other';
+        notify('Scan complete – check fields.','good');
       }catch(err){ ocrStatus.textContent=''; notify('OCR error: '+err.message,'bad'); }
     }
-    function parseReceiptText(text){
+
+    // Parsing helper (used by single + batch)
+    function parseFieldsFromText(text){
       const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
       const totalLine = lines.find(l=>/total|amount due|grand total/i.test(l)) || '';
       const moneyRegex = /(?:(?:£|GBP)\s*)?(\d{1,4}(?:[.,]\d{3})*(?:[.,]\d{2}))/g;
       const cands = []; lines.forEach((l,idx)=>{ let m; while((m=moneyRegex.exec(l))){ cands.push({v:parseFloat(m[1].replace(/,/g,'.')), idx}); }});
       let pick=null; if(totalLine){ const i = lines.indexOf(totalLine); pick = cands.filter(c=>Math.abs(c.idx-i)<=2).sort((a,b)=>b.v-a.v)[0]||null; }
       if(!pick && cands.length) pick = cands.sort((a,b)=>b.v-a.v)[0];
-      if(pick) amountInput.value = fmtGBP(pick.v);
+      const amount = pick ? pick.v : null;
       const dUK = text.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\b/);
-      if(dUK){ let [_,d,m,y]=dUK; y = y.length===2 ? ('20'+y) : y; dateInput.value = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
-      const desc = lines.filter(l=>!/total|date|vat|thanks|visit|invoice|receipt/i.test(l)).slice(0,3).join(' · ').slice(0,60);
-      if(desc) descInput.value = desc; if(categorySelect.value==='Select') categorySelect.value='Other';
+      let date = null; if(dUK){ let [_,d,m,y]=dUK; y = y.length===2 ? ('20'+y) : y; date = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+      const desc = lines.filter(l=>!/total|date|vat|thanks|visit|invoice|receipt/i.test(l)).slice(0,3).join(' · ').slice(0,60) || 'Receipt (batch)';
+      return { amount, date, desc };
+    }
+
+    // ===== Batch upload up to 25 receipts =====
+    uploadBatchBtn.addEventListener('click', ()=> uploadBatchFile.click());
+    uploadBatchFile.addEventListener('change', (e)=>{
+      const files = (e.target.files ? Array.from(e.target.files) : []).slice(0,25);
+      if(files.length){ handleBatchFiles(files); }
+    });
+
+    async function handleBatchFiles(files){
+      batchStatus.textContent = `Starting batch (${files.length})…`;
+      let processed=0, failed=0;
+      let worker;
+      try{ worker = await Tesseract.createWorker('eng'); }
+      catch(err){ notify('Cannot start OCR worker for batch.', 'bad'); batchStatus.textContent=''; return; }
+
+      for(const f of files){
+        try{
+          const { data:{ text } } = await worker.recognize(f);
+          const parsed = parseFieldsFromText(text);
+          const timestamp = new Date().toISOString();
+          let photoId = null; try{ photoId = await storePhoto(f); }catch{}
+          logs.push({ timestamp, date: parsed.date || todayISO(), category:'Other', amount: parsed.amount, desc: parsed.desc, photoId, cloudId:null, cloudUrl:null, provider:'none' });
+          processed++;
+          batchStatus.textContent = `Processed ${processed}/${files.length}…`;
+        }catch(err){ failed++; }
+      }
+      try{ await worker.terminate(); }catch{}
+      saveLogs(); refreshMonthFilter(); renderLogs();
+      notify(`Batch complete: ${processed} added${failed?`, ${failed} failed`:''}.`, failed? 'warn' : 'good');
+      batchStatus.textContent = '';
     }
 
     // ===== Capture helpers =====
-    function handleBlob(blob){ capturedBlob = blob; previewImg.src = URL.createObjectURL(blob); previewImg.classList.remove('hidden'); video.classList.add('hidden'); logBtn.classList.remove('hidden'); processOCR(blob); }
+    function handleBlob(blob){
+      capturedBlob = blob;
+      previewImg.src = URL.createObjectURL(blob);
+      previewImg.classList.remove('hidden');
+      video.classList.add('hidden');
+      logBtn.classList.remove('hidden');
+      processOCR(blob);
+    }
     captureBtn.addEventListener('click', ()=>{
       const vw = video.videoWidth || 1280, vh = video.videoHeight || 960;
       canvas.width = vw; canvas.height = vh; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, vw, vh);
@@ -457,7 +511,6 @@
         }catch(err){ notify('Upload failed: '+err.message, 'bad'); return; }
       }
 
-      // FAST: store photo in IndexedDB; keep logs light
       let photoId = null;
       try { photoId = await storePhoto(capturedBlob); } catch(e){ console.warn('Photo store failed', e); }
 
@@ -476,21 +529,33 @@
     // ===== View logs =====
     viewLogsBtn.addEventListener('click', ()=>{ renderLogs(); logsSection.classList.remove('hidden'); refreshMonthFilter(); });
     monthFilter.addEventListener('change', ()=> renderLogs());
+    sortDateSel.addEventListener('change', ()=> renderLogs());
 
     function renderLogs(){
       logTbody.innerHTML=''; const monthSel = monthFilter.value; let total=0, count=0;
-      logs.filter(l=>monthSel==='all' || (l.date||'').startsWith(monthSel)).forEach((log, index)=>{
+
+      // Filter by month
+      let filtered = logs.filter(l=> monthSel==='all' || (l.date||'').startsWith(monthSel));
+
+      // Sort by date (fallback to timestamp if date missing)
+      filtered.sort((a,b)=>{
+        const da = new Date(a.date || a.timestamp || 0).getTime();
+        const db = new Date(b.date || b.timestamp || 0).getTime();
+        return (sortDateSel.value === 'asc') ? (da - db) : (db - da);
+      });
+
+      filtered.forEach((log)=>{
         const tr = document.createElement('tr'); tr.className='border-b border-bg-line';
         const cloudCell = log.cloudUrl ? `<a href="${log.cloudUrl}" target="_blank" class="underline">Open</a>`
                           : (log.cloudId ? (log.provider==='google' ? `<a class='underline' target='_blank' href='https://drive.google.com/file/d/${log.cloudId}/view'>Open</a>` : 'Link') : '—');
         tr.innerHTML = `
-          <td class="py-2 pr-2 align-top">${log.date}</td>
-          <td class="py-2 pr-2 align-top">${log.category}</td>
+          <td class="py-2 pr-2 align-top">${log.date || ''}</td>
+          <td class="py-2 pr-2 align-top">${log.category || ''}</td>
           <td class="py-2 pr-2 align-top">${fmtGBP(log.amount)}</td>
           <td class="py-2 pr-2 align-top">${(log.desc||'').slice(0,60)}${(log.desc||'').length>60?'…':''}</td>
-          <td class="py-2 pr-2 align-top"><button class="px-2 py-1 text-xs rounded-lg bg-bg-card border border-bg-line" data-view="${index}">View</button></td>
+          <td class="py-2 pr-2 align-top"><button class="px-2 py-1 text-xs rounded-lg bg-bg-card border border-bg-line" data-view="${logs.indexOf(log)}">View</button></td>
           <td class="py-2 pr-2 align-top">${cloudCell}</td>
-          <td class="py-2 pr-2 align-top"><button class="px-2 py-1 text-xs rounded-lg bg-bad/20 border border-bad/40" data-del="${index}">Delete</button></td>`;
+          <td class="py-2 pr-2 align-top"><button class="px-2 py-1 text-xs rounded-lg bg-bad/20 border border-bad/40" data-del="${logs.indexOf(log)}">Delete</button></td>`;
         logTbody.appendChild(tr); total += Number(log.amount)||0; count++;
       });
       totalAmountP.textContent = `Total: £${fmtGBP(total)}`; countInfo.textContent = `${count} entr${count===1?'y':'ies'}`;
@@ -500,7 +565,6 @@
     function deleteLog(index){ if(!confirm('Delete this entry?')) return; logs.splice(index,1); saveLogs(); renderLogs(); }
     clearLogsBtn.addEventListener('click', ()=>{ if(!confirm('Clear ALL entries?')) return; logs=[]; saveLogs(); renderLogs(); });
 
-    // View photo supports legacy base64 & new IndexedDB blobs
     function showPhoto(index){
       const entry = logs[index];
       if(entry.photoDataURL){ // legacy
